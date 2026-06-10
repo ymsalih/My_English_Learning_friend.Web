@@ -16,7 +16,7 @@
   padding: 0.75rem 2rem;
   border-radius: 100px;
   border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface);
   color: var(--text-muted);
   font-weight: 700;
   cursor: pointer;
@@ -25,7 +25,7 @@
 }
 
 .level-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--glass-bg);
   transform: translateY(-2px);
   color: var(--foreground);
   border-color: rgba(255, 255, 255, 0.2);
@@ -97,7 +97,7 @@
 
 .package-word-tr {
   font-size: 1.15rem;
-  color: #e2e8f0;
+  color: var(--text-muted);
   font-weight: 600;
   margin: 0;
 }
@@ -109,7 +109,7 @@
 }
 
 .action-btn {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface);
   border: 1px solid var(--glass-border);
   width: 44px;
   height: 44px;
@@ -123,9 +123,9 @@
 }
 
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--glass-bg);
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-dark);
 }
 
 .action-btn.speak-btn:hover {

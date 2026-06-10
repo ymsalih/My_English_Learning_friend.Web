@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { doc, onSnapshot, collection } from 'firebase/firestore';
-import { TrendingUp, Mail, Settings, User, Target, BookOpen, LogOut, Moon, Volume2 } from 'lucide-react';
+import { doc, onSnapshot, collection, query, where, getCountFromServer, orderBy, limit, deleteDoc, updateDoc, increment, getDoc, writeBatch } from 'firebase/firestore';
+import { TrendingUp, Mail, Settings, User, Target, BookOpen, LogOut, Moon, Volume2, Trash2 } from 'lucide-react';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import './profile.css';
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('progress');
-  const [stats, setStats] = useState({ totalCorrect: 0, totalWrong: 0, totalAnswered: 0 });
+  const [stats, setStats] = useState({ totalCorrect: 0, totalWrong: 0, totalMastered: 0, totalTests: 0, totalAnswered: 0 });
   const [learnedWords, setLearnedWords] = useState(0);
   const [testHistory, setTestHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,37 +26,38 @@ export default function ProfilePage() {
       if (docSnapshot.exists()) {
         const data = docSnapshot.data();
         if (data.stats) {
-          const { totalCorrect = 0, totalWrong = 0 } = data.stats;
+          const { totalCorrect = 0, totalWrong = 0, totalMastered = 0, totalTests = 0 } = data.stats;
           setStats({
             totalCorrect,
             totalWrong,
-            totalAnswered: totalCorrect + totalWrong
+            totalMastered,
+            totalTests,
+            totalAnswered: totalCorrect + totalWrong + totalMastered
           });
         }
       }
     });
 
-    // Fetch Learned Words
-    const wordsUnsubscribe = onSnapshot(collection(db, 'users', user.uid, 'words'), (snapshot) => {
-      let learnedCount = 0;
-      snapshot.forEach(doc => {
-        if (doc.data().isLearned) learnedCount++;
-      });
-      setLearnedWords(learnedCount);
-      setLoading(false);
-    });
+    // Fetch Learned Words using Count (No heavy snapshot)
+    const fetchLearnedWords = async () => {
+      try {
+        const q = query(collection(db, 'users', user.uid, 'words'), where('isLearned', '==', true));
+        const snapshot = await getCountFromServer(q);
+        setLearnedWords(snapshot.data().count);
+      } catch (err) {
+        console.error("Öğrenilen kelime sayisi alinirken hata:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLearnedWords();
 
-    // Fetch Test History
-    const historyUnsubscribe = onSnapshot(collection(db, 'users', user.uid, 'test_history'), (snapshot) => {
+    // Fetch Test History (Limited to 20 for performance)
+    const historyQuery = query(collection(db, 'users', user.uid, 'test_history'), orderBy('timestamp', 'desc'), limit(20));
+    const historyUnsubscribe = onSnapshot(historyQuery, (snapshot) => {
       const historyData = [];
       snapshot.forEach(doc => {
         historyData.push({ id: doc.id, ...doc.data() });
-      });
-      // Sort newest first
-      historyData.sort((a, b) => {
-        const timeA = a.timestamp?.seconds || 0;
-        const timeB = b.timestamp?.seconds || 0;
-        return timeB - timeA;
       });
       setTestHistory(historyData);
     });
@@ -66,7 +67,6 @@ export default function ProfilePage() {
 
     return () => {
       userUnsubscribe();
-      wordsUnsubscribe();
       historyUnsubscribe();
     };
   }, [user]);
@@ -77,7 +77,7 @@ export default function ProfilePage() {
   // Calculate Success Rate
   let successRate = 0;
   if (stats.totalAnswered > 0) {
-    successRate = ((stats.totalCorrect - stats.totalWrong) / stats.totalAnswered) * 100;
+    successRate = ((stats.totalCorrect + stats.totalMastered - stats.totalWrong) / stats.totalAnswered) * 100;
     if (successRate < 0) successRate = 0;
     successRate = Math.round(successRate);
   }
@@ -108,6 +108,60 @@ export default function ProfilePage() {
       utterance.rate = ttsRate;
       utterance.pitch = ttsPitch;
       window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleDeleteTest = async (testId, testStats) => {
+    const confirmDelete = window.confirm("Bu testi silmek istediğinize emin misiniz? Bu işlem, ana başarı oranınızı da geri düşürecektir.");
+    if (!confirmDelete) return;
+
+    try {
+      // 1. Revert mastered words to isLearned = false if any exist
+      if (testStats.masteredWordIds && testStats.masteredWordIds.length > 0) {
+        const batch = writeBatch(db);
+        testStats.masteredWordIds.forEach(wordId => {
+          const wordRef = doc(db, 'users', user.uid, 'words', wordId);
+          batch.update(wordRef, { isLearned: false });
+        });
+        await batch.commit();
+      }
+
+      // 2. Safely decrement stats (preventing negative values)
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        let newTotalTests = 0;
+        let newTotalCorrect = 0;
+        let newTotalWrong = 0;
+        let newTotalMastered = 0;
+
+        if (data.stats) {
+          const correctDec = testStats.correct || testStats.rememberedCount || 0;
+          const wrongDec = testStats.wrong || testStats.forgotCount || 0;
+          const masteredDec = testStats.mastered || testStats.masteredCount || 0;
+
+          newTotalTests = Math.max(0, (data.stats.totalTests || 0) - 1);
+          newTotalCorrect = Math.max(0, (data.stats.totalCorrect || 0) - correctDec);
+          newTotalWrong = Math.max(0, (data.stats.totalWrong || 0) - wrongDec);
+          newTotalMastered = Math.max(0, (data.stats.totalMastered || 0) - masteredDec);
+        }
+
+        await updateDoc(userRef, {
+          'stats.totalTests': newTotalTests,
+          'stats.totalCorrect': newTotalCorrect,
+          'stats.totalWrong': newTotalWrong,
+          'stats.totalMastered': newTotalMastered
+        });
+      }
+
+      // 3. Delete the test history doc
+      await deleteDoc(doc(db, 'users', user.uid, 'test_history', testId));
+      
+    } catch (err) {
+      console.error("Test silinirken hata:", err);
+      alert("Test silinirken bir hata oluştu.");
     }
   };
 
@@ -182,8 +236,8 @@ export default function ProfilePage() {
               </div>
               <div className="detail-card">
                 <BookOpen className="detail-icon" size={28} color="var(--warning)" />
-                <span className="detail-value">{loading ? '...' : stats.totalAnswered}</span>
-                <span className="detail-label">Çözülen Soru</span>
+                <span className="detail-value">{loading ? '...' : stats.totalTests}</span>
+                <span className="detail-label">Çözülen Test</span>
               </div>
             </div>
           </div>
@@ -215,17 +269,24 @@ export default function ProfilePage() {
                         </div>
                         <div className="history-stats">
                           <div className="history-stat-pill">
-                            <span className="stat-correct">{test.correct || 0}</span>
+                            <span className="stat-correct">{test.correct || test.rememberedCount || 0}</span>
                             <small>Doğru</small>
                           </div>
                           <div className="history-stat-pill">
-                            <span className="stat-wrong">{test.wrong || 0}</span>
+                            <span className="stat-wrong">{test.wrong || test.forgotCount || 0}</span>
                             <small>Yanlış</small>
                           </div>
                           <div className="history-stat-pill">
-                            <span className="stat-mastered">{test.mastered || 0}</span>
+                            <span className="stat-mastered">{test.mastered || test.masteredCount || 0}</span>
                             <small>Usta</small>
                           </div>
+                          <button 
+                            className="delete-test-btn" 
+                            title="Bu Testi Sil" 
+                            onClick={() => handleDeleteTest(test.id, test)}
+                          >
+                            <Trash2 size={20} />
+                          </button>
                         </div>
                       </div>
                     );

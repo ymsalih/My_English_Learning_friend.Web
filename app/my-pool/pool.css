@@ -122,8 +122,8 @@
 
 .word-card:hover {
   transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: var(--shadow-dark);
+  border-color: var(--glass-border-hover);
 }
 
 .word-details {
@@ -148,7 +148,7 @@
 
 .word-tr {
   font-size: 1.25rem;
-  color: #e2e8f0;
+  color: var(--text-muted);
   font-weight: 500;
   margin: 0;
 }
@@ -159,7 +159,7 @@
 }
 
 .action-btn {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface);
   border: 1px solid var(--glass-border);
   width: 48px;
   height: 48px;
@@ -173,13 +173,13 @@
 }
 
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--glass-bg);
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-dark);
 }
 
 .action-btn.danger-btn {
-  color: #fca5a5;
+  color: var(--error);
 }
 
 .action-btn.danger-btn:hover {
@@ -190,7 +190,7 @@
 }
 
 .action-btn.success-btn {
-  color: #6ee7b7;
+  color: var(--success);
 }
 
 .action-btn.success-btn:hover {

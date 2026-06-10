@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Video, PlayCircle } from 'lucide-react';
+import ShadowingCoach from '../../components/ShadowingCoach';
 import './video.css';
 
 export default function VideoPage() {
@@ -57,6 +58,8 @@ export default function VideoPage() {
           </div>
           <h2 className="player-title">{selectedVideo.title}</h2>
           <p className="player-desc">{selectedVideo.desc}</p>
+          
+          <ShadowingCoach />
         </div>
       ) : (
         <>

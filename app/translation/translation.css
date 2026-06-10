@@ -152,10 +152,10 @@
 }
 
 .icon-btn:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--glass-bg);
   color: var(--foreground);
   transform: translateY(-2px);
-  border-color: rgba(255,255,255,0.2);
+  border-color: var(--glass-border-hover);
 }
 
 .add-btn:hover {
@@ -348,10 +348,11 @@
 }
 
 .highlighted-word {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--surface);
   padding: 0.1rem 0.3rem;
   border-radius: 4px;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
+  border: 1px solid var(--glass-border);
 }
 

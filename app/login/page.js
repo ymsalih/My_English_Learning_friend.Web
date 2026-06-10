@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
 
   const { login, register, resetPassword } = useAuth();
 
@@ -25,12 +27,7 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        const userCredential = await login(email, password);
-        if (!userCredential.user.emailVerified) {
-          setError('Lütfen giriş yapmadan önce e-posta adresinizi doğrulayın.');
-          // Context will redirect if verified, but since we didn't sign out in context immediately, 
-          // we might want to let them know it's unverified. (Flutter app blocks login until verified).
-        }
+        await login(email, password);
       } else {
         if (password !== confirmPassword) {
           throw new Error('Şifreler birbiriyle eşleşmiyor.');
@@ -48,23 +45,36 @@ export default function LoginPage() {
       let errorMsg = 'Bir hata oluştu.';
       if (err.code === 'auth/invalid-credential') errorMsg = 'E-posta veya şifre hatalı.';
       if (err.code === 'auth/email-already-in-use') errorMsg = 'Bu e-posta adresi zaten kullanımda.';
-      if (err.message) errorMsg = err.message;
+      if (err.code === 'auth/unverified-email') errorMsg = err.message;
+      if (!err.code && err.message) errorMsg = err.message;
       setError(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      setError('Lütfen önce e-posta adresinizi girin.');
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!resetEmail) {
+      setError('Lütfen e-posta adresinizi girin.');
       return;
     }
+    setLoading(true);
     try {
-      await resetPassword(email);
-      setMessage('Sıfırlama bağlantısı gönderildi. Mail kutunuzu kontrol edin.');
+      await resetPassword(resetEmail);
+      setShowResetModal(false);
+      setMessage('Sıfırlama bağlantısı gönderildi. Lütfen mail kutunuzu kontrol edin.');
+      setResetEmail('');
     } catch (err) {
-      setError('E-posta gönderilemedi veya bulunamadı.');
+      if (err.code === 'auth/user-not-found') {
+        setError('Bu e-posta adresine kayıtlı bir hesap bulunamadı.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Lütfen geçerli bir e-posta adresi girin.');
+      } else {
+        setError('E-posta gönderilemedi.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -152,7 +162,7 @@ export default function LoginPage() {
 
           {isLogin && (
             <div className="forgot-password">
-              <button type="button" onClick={handleForgotPassword}>Şifremi unuttum</button>
+              <button type="button" onClick={() => { setShowResetModal(true); setError(''); setMessage(''); }}>Şifremi unuttum</button>
             </div>
           )}
 
@@ -171,6 +181,36 @@ export default function LoginPage() {
           </button>
         </div>
       </div>
+
+      {showResetModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel animate-fade-in">
+            <h2>Şifre Sıfırlama</h2>
+            <p>Hesabınıza kayıtlı e-posta adresini girin, size bir sıfırlama bağlantısı gönderelim.</p>
+            <form onSubmit={handleForgotPassword} style={{marginTop: '1.5rem'}}>
+              <div className="input-group">
+                <Mail className="input-icon" size={20} />
+                <input 
+                  type="email" 
+                  placeholder="E-posta Adresiniz" 
+                  className="input-field" 
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="modal-actions" style={{display: 'flex', gap: '1rem', marginTop: '1.5rem'}}>
+                <button type="button" className="btn btn-outline" style={{flex: 1}} onClick={() => setShowResetModal(false)}>
+                  İptal
+                </button>
+                <button type="submit" className="btn btn-primary" style={{flex: 1}} disabled={loading}>
+                  {loading ? 'Gönderiliyor...' : 'Gönder'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

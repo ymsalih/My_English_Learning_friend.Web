@@ -2,19 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { db } from '../../lib/firebase';
-import { collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp, increment, setDoc } from 'firebase/firestore';
 import { Target, RotateCcw, CheckCircle, XCircle, Award, Volume2, Settings } from 'lucide-react';
 import { speakWord } from '../../lib/tts';
 import './test.css';
 
 export default function TestPage() {
-  const { user } = useAuth();
+  const { user, isPro, userData } = useAuth();
+  const router = useRouter();
   
   const [allAvailableWords, setAllAvailableWords] = useState([]);
   const [words, setWords] = useState([]);
   
   const [loading, setLoading] = useState(true);
+  const [masteredWordIds, setMasteredWordIds] = useState([]);
   const [isSetupMode, setIsSetupMode] = useState(true);
   const [selectedWordCount, setSelectedWordCount] = useState(10);
   
@@ -69,7 +72,34 @@ export default function TestPage() {
     }
   };
 
-  const startTest = () => {
+  const startTest = async () => {
+    // Kısıtlama Kontrolü (Test Limiti)
+    if (!isPro && userData) {
+      const today = new Date().toISOString().split('T')[0];
+      const lastTestDate = userData.lastTestDate || '';
+      
+      let currentCount = userData.dailyTestCount || 0;
+      if (lastTestDate !== today) {
+        currentCount = 0; // Yeni gün, sayaç sıfırlanmış sayılır
+      }
+
+      if (currentCount >= 1) {
+        alert("Ücretsiz plan için günlük 1 test limitinize ulaştınız. Sınırsız pratik için Pro'ya geçin!");
+        router.push('/pricing');
+        return;
+      }
+      
+      // Limiti aşmadıysa veritabanını güncelle
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          dailyTestCount: currentCount + 1,
+          lastTestDate: today
+        });
+      } catch (err) {
+        console.error("Sayaç güncellenemedi", err);
+      }
+    }
+
     // Take the top N words (already sorted by oldest lastReviewed)
     const sessionWords = allAvailableWords.slice(0, selectedWordCount);
     
@@ -85,11 +115,12 @@ export default function TestPage() {
     setMasteredCount(0);
     setRememberedCount(0);
     setForgotCount(0);
+    setMasteredWordIds([]);
     setIsSetupMode(false);
     setTestCompleted(false);
   };
 
-  const handleAction = async (action) => {
+  const handleAction = (action) => {
     if (!user || words.length === 0) return;
     
     const currentWord = words[currentWordIndex];
@@ -97,47 +128,63 @@ export default function TestPage() {
       lastReviewed: serverTimestamp()
     };
 
+    let newMastered = masteredCount;
+    let newRemembered = rememberedCount;
+    let newForgot = forgotCount;
+    let updatedMasteredWordIds = [...masteredWordIds];
+
     if (action === 'mastered') {
       updateData.isLearned = true;
-      setMasteredCount(prev => prev + 1);
+      newMastered += 1;
+      setMasteredCount(newMastered);
+      
+      if (!updatedMasteredWordIds.includes(currentWord.id)) {
+        updatedMasteredWordIds.push(currentWord.id);
+      }
+      setMasteredWordIds(updatedMasteredWordIds);
     } else if (action === 'remembered') {
-      setRememberedCount(prev => prev + 1);
+      newRemembered += 1;
+      setRememberedCount(newRemembered);
     } else if (action === 'forgot') {
-      setForgotCount(prev => prev + 1);
+      newForgot += 1;
+      setForgotCount(newForgot);
     }
 
-    // Update in background
-    try {
-      await updateDoc(doc(db, 'users', user.uid, 'words', currentWord.id), updateData);
-    } catch (err) {
-      console.error("Error updating word:", err);
-    }
+    // Fire and forget (No await!) to make UI lightning fast
+    updateDoc(doc(db, 'users', user.uid, 'words', currentWord.id), updateData)
+      .catch(err => console.error("Error updating word:", err));
 
-    // Move to next word
+    // Move to next word instantly
     if (currentWordIndex + 1 < words.length) {
       setIsFlipped(false);
       setCurrentWordIndex(prev => prev + 1);
     } else {
       setTestCompleted(true);
       
-      // Save test result to database
-      const finalMastered = action === 'mastered' ? masteredCount + 1 : masteredCount;
-      const finalRemembered = action === 'remembered' ? rememberedCount + 1 : rememberedCount;
-      const finalForgot = action === 'forgot' ? forgotCount + 1 : forgotCount;
       const totalWords = words.length;
+      let calculatedRate = ((newMastered + newRemembered) - newForgot) / totalWords * 100;
+      if (calculatedRate < 0) calculatedRate = 0;
       
-      try {
-        await addDoc(collection(db, 'users', user.uid, 'test_history'), {
-          timestamp: serverTimestamp(),
-          totalQuestions: totalWords,
-          masteredCount: finalMastered,
-          rememberedCount: finalRemembered,
-          forgotCount: finalForgot,
-          successRate: Math.round(((finalRemembered + finalMastered) / totalWords) * 100)
-        });
-      } catch (err) {
-        console.error("Test sonucu kaydedilirken hata:", err);
-      }
+      // Mobildeki gibi global statsları güvenle güncelle (setDoc ve merge true ile)
+      setDoc(doc(db, 'users', user.uid), {
+        stats: {
+          totalTests: increment(1),
+          totalCorrect: increment(newRemembered),
+          totalWrong: increment(newForgot),
+          totalMastered: increment(newMastered)
+        }
+      }, { merge: true }).catch(err => console.error("Stats güncellenirken hata:", err));
+
+      // Mobildeki anahtar isimleriyle test geçmişini kaydet (correct, wrong, mastered)
+      addDoc(collection(db, 'users', user.uid, 'test_history'), {
+        timestamp: serverTimestamp(),
+        total: totalWords,
+        mastered: newMastered,
+        correct: newRemembered,
+        wrong: newForgot,
+        successRate: Math.round(calculatedRate),
+        masteredWordIds: updatedMasteredWordIds
+      }).catch(err => console.error("Test sonucu kaydedilirken hata:", err));
     }
   };
 

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Video, Camera, PenTool, Layers, Award, TrendingUp, Target } from 'lucide-react';
+import { BookOpen, Video, Camera, PenTool, Layers, Award, TrendingUp, Target, Crown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot, getCountFromServer } from 'firebase/firestore';
 import './dashboard.css';
 
 const modules = [
@@ -17,7 +17,7 @@ const modules = [
 ];
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, userData, isPro } = useAuth();
   const [totalWords, setTotalWords] = useState(0);
   const [successRate, setSuccessRate] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -25,20 +25,27 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     
-    const wordsUnsubscribe = onSnapshot(collection(db, 'users', user.uid, 'words'), (snapshot) => {
-      setTotalWords(snapshot.docs.length);
-    });
+    const fetchWordCount = async () => {
+      try {
+        const coll = collection(db, 'users', user.uid, 'words');
+        const snapshot = await getCountFromServer(coll);
+        setTotalWords(snapshot.data().count);
+      } catch (err) {
+        console.error("Kelime sayisi alinirken hata:", err);
+      }
+    };
+    fetchWordCount();
 
     const userUnsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnapshot) => {
       if (docSnapshot.exists()) {
         const data = docSnapshot.data();
         if (data.stats) {
-          const { totalCorrect = 0, totalWrong = 0 } = data.stats;
-          const totalAnswered = totalCorrect + totalWrong;
+          const { totalCorrect = 0, totalWrong = 0, totalMastered = 0 } = data.stats;
+          const totalAnswered = totalCorrect + totalWrong + totalMastered;
           
           if (totalAnswered > 0) {
-            // Başarı Oranı Formülü: ((Doğru - Yanlış) / Toplam) * 100
-            let rate = ((totalCorrect - totalWrong) / totalAnswered) * 100;
+            // Başarı Oranı Formülü: ((Doğru + Usta - Yanlış) / Toplam) * 100
+            let rate = ((totalCorrect + totalMastered - totalWrong) / totalAnswered) * 100;
             if (rate < 0) rate = 0;
             setSuccessRate(Math.round(rate));
           } else {
@@ -50,7 +57,6 @@ export default function Dashboard() {
     });
 
     return () => {
-      wordsUnsubscribe();
       userUnsubscribe();
     };
   }, [user]);
@@ -59,8 +65,29 @@ export default function Dashboard() {
     <div className="dashboard-container animate-fade-in">
       <header className="dashboard-header">
         <div className="welcome-section">
-          <h1>Hoş Geldiniz, <span className="highlight">İngilizce Serüveniniz Başlıyor</span></h1>
+          <h1>Hoş Geldiniz, <span className="highlight">İngilizce Serüveniniz Başlıyor</span> {isPro && <Crown size={36} color="#fbbf24" style={{verticalAlign: 'middle', marginLeft: '10px'}} title="Premium Üye" />}</h1>
           <p>Günlük öğrenme hedeflerinize ulaşmak ve dil becerilerinizi sınırların ötesine taşımak için harika bir gün.</p>
+          
+          {!isPro && userData && (
+            <div className="limits-container glass-panel" style={{marginTop: '2rem', padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '16px', textAlign: 'left'}}>
+              <h3 style={{marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px'}}><Crown size={20} color="#fbbf24" /> Ücretsiz Plan Limitleriniz</h3>
+              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem'}}>
+                <div style={{background: 'var(--background)', padding: '1rem', borderRadius: '12px'}}>
+                  <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>Kelime Havuzu</p>
+                  <div style={{fontWeight: 'bold', color: (userData.totalWordsAdded || 0) >= 50 ? '#ef4444' : 'var(--foreground)'}}>{userData.totalWordsAdded || 0} / 50 Kelime</div>
+                </div>
+                <div style={{background: 'var(--background)', padding: '1rem', borderRadius: '12px'}}>
+                  <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>Günlük Test Hakkı</p>
+                  <div style={{fontWeight: 'bold', color: (userData.dailyTestCount || 0) >= 1 ? '#ef4444' : 'var(--foreground)'}}>{userData.dailyTestCount || 0} / 1 Test</div>
+                </div>
+                <div style={{background: 'var(--background)', padding: '1rem', borderRadius: '12px'}}>
+                  <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>Günlük Çeviri (Kamera)</p>
+                  <div style={{fontWeight: 'bold', color: (userData.dailyOcrCount || 0) >= 3 ? '#ef4444' : 'var(--foreground)'}}>{userData.dailyOcrCount || 0} / 3 Okutma</div>
+                </div>
+              </div>
+              <Link href="/pricing" className="action-btn primary" style={{marginTop: '1.5rem', display: 'inline-block', textAlign: 'center', textDecoration: 'none', padding: '0.8rem 1.5rem', fontSize: '0.95rem', width: 'auto'}}>Limitleri Kaldır - Premium'a Geç</Link>
+            </div>
+          )}
         </div>
 
         <div className="stats-container">

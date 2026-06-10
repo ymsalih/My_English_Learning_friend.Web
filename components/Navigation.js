@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
-import { LogOut, Home, BookOpen, Layers, Target, Newspaper, Video, Languages, Award, User } from 'lucide-react';
+import { LogOut, Home, BookOpen, Layers, Target, Newspaper, Video, Languages, Award, User, Crown, Bot, Sparkles } from 'lucide-react';
 import './Navigation.css';
 
 const navItems = [
@@ -14,14 +14,17 @@ const navItems = [
   { name: 'Kendini Test Et', path: '/test', icon: Target },
   { name: 'Öğrendiklerim', path: '/learned', icon: Award },
   { name: 'Kelime Paketleri', path: '/words', icon: BookOpen },
+  { name: 'Yapay Zeka Sohbet', path: '/ai-chat', icon: Bot },
+  { name: 'Yapay Zeka Hikaye', path: '/story', icon: Sparkles },
   { name: 'Video Pratik', path: '/video', icon: Video },
   { name: 'Haberler', path: '/news', icon: Newspaper },
+  { name: 'Premium\'a Geç', path: '/pricing', icon: Crown },
   { name: 'Profilim', path: '/profile', icon: User }
 ];
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { logout, isPro } = useAuth();
 
   // Don't show navigation on splash or login screens
   if (pathname === '/' || pathname === '/login') {
@@ -31,14 +34,20 @@ export default function Navigation() {
   return (
     <nav className="sidebar">
       <div className="sidebar-header">
-        <div className="logo-container">
-          {/* Logo will be an image or styled text */}
-          <span className="logo-text">İngilizce Destek</span>
+        <div className="logo-container" style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+          <span className="logo-text" style={{marginBottom: isPro ? '0.5rem' : '0'}}>İngilizce Destek</span>
+          {isPro && (
+            <div style={{background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', color: '#fff', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 10px rgba(251, 191, 36, 0.3)', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
+              <Crown size={14} /> Premium Aktif
+            </div>
+          )}
         </div>
       </div>
 
       <div className="sidebar-links">
         {navItems.map((item) => {
+          if (item.path === '/pricing' && isPro) return null;
+          
           const Icon = item.icon;
           const isActive = pathname === item.path;
 

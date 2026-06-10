@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import { CheckCircle, Trash2, Volume2, Plus, Search } from 'lucide-react';
 import { speakWord } from '../../lib/tts';
 import './pool.css';
 
 export default function MyPoolPage() {
-  const { user } = useAuth();
+  const { user, isPro, userData } = useAuth();
+  const router = useRouter();
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -78,6 +80,15 @@ export default function MyPoolPage() {
     e.preventDefault();
     if (!user || !newEng.trim() || !newTr.trim()) return;
     
+    // Limit Check
+    if (!isPro && userData) {
+      if ((userData.totalWordsAdded || 0) >= 50) {
+        alert("Ücretsiz planda kelime havuzunuza en fazla 50 kelime ekleyebilirsiniz. Sınırsız kelime için Pro'ya geçin!");
+        router.push('/pricing');
+        return;
+      }
+    }
+
     setAdding(true);
     try {
       await addDoc(collection(db, 'users', user.uid, 'words'), {
@@ -87,6 +98,13 @@ export default function MyPoolPage() {
         isLearned: false,
         lastReviewed: new Date(0)
       });
+
+      if (!isPro) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          totalWordsAdded: increment(1)
+        });
+      }
+
       setNewEng('');
       setNewTr('');
       setShowForm(false);
@@ -112,13 +130,22 @@ export default function MyPoolPage() {
       <header className="page-header">
         <h1>Kelime <span className="highlight">Havuzum</span></h1>
         <p>Paketlerden eklediğin veya manuel girdiğin kelimeler burada birikir. Öğrendiğin kelimeleri işaretle.</p>
-        <button 
-          className="btn btn-primary" 
-          style={{marginTop: '1rem'}} 
-          onClick={() => setShowForm(!showForm)}
-        >
-          {showForm ? 'Kapat' : '+ Manuel Kelime Ekle'}
-        </button>
+        
+        <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="glass-panel" style={{ padding: '0.6rem 1.2rem', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', border: '1px solid var(--border-color)' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Kapasite:</span> 
+            <strong style={{ color: isPro ? 'var(--primary)' : ((userData?.totalWordsAdded || 0) >= 50 ? '#ef4444' : 'var(--foreground)') }}>
+              {isPro ? 'Sınırsız 👑' : `${userData?.totalWordsAdded || 0} / 50`}
+            </strong>
+          </div>
+          
+          <button 
+            className="btn btn-primary" 
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? 'İptal' : '+ Manuel Kelime Ekle'}
+          </button>
+        </div>
       </header>
 
       {/* Search Bar */}

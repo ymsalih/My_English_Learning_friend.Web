@@ -2,14 +2,16 @@
 
 import { useState, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { db } from '../../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import { Camera, Volume2, Plus, ArrowRightLeft, BookOpen, Lightbulb, Quote } from 'lucide-react';
 import { speakWord } from '../../lib/tts';
 import './translation.css';
 
 export default function TranslationPage() {
-  const { user } = useAuth();
+  const { user, isPro, userData } = useAuth();
+  const router = useRouter();
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [direction, setDirection] = useState('en-tr'); // en-tr or tr-en
@@ -227,6 +229,33 @@ export default function TranslationPage() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Kısıtlama Kontrolü (OCR Limiti)
+    if (!isPro && userData) {
+      const today = new Date().toISOString().split('T')[0];
+      const lastOcrDate = userData.lastOcrDate || '';
+      
+      let currentCount = userData.dailyOcrCount || 0;
+      if (lastOcrDate !== today) {
+        currentCount = 0; // Yeni gün, sayaç sıfırlanmış sayılır
+      }
+
+      if (currentCount >= 3) {
+        alert("Ücretsiz plan için günlük 3 görsel okutma limitinize ulaştınız. Sınırsız kullanım için Pro'ya geçin!");
+        router.push('/pricing');
+        return;
+      }
+      
+      // Limiti aşmadıysa veritabanını güncelle
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          dailyOcrCount: currentCount + 1,
+          lastOcrDate: today
+        });
+      } catch (err) {
+        console.error("Sayaç güncellenemedi", err);
+      }
+    }
+
     setOcrLoading(true);
     setInputText("Görsel okunuyor, lütfen bekleyin...");
     
@@ -251,6 +280,15 @@ export default function TranslationPage() {
   const handleAddPool = async () => {
     if (!user || !inputText || !translatedText || translatedText.includes("hata") || translatedText.includes("bulunamadı")) return;
     
+    // Kısıtlama Kontrolü (Havuz Limiti)
+    if (!isPro && userData) {
+      if ((userData.totalWordsAdded || 0) >= 50) {
+        alert("Ücretsiz planda kelime havuzunuza en fazla 50 kelime ekleyebilirsiniz. Sınırsız kelime için Pro'ya geçin!");
+        router.push('/pricing');
+        return;
+      }
+    }
+
     const eng = direction === 'en-tr' ? inputText : translatedText;
     const tr = direction === 'en-tr' ? translatedText : inputText;
 
@@ -262,6 +300,14 @@ export default function TranslationPage() {
         isLearned: false,
         lastReviewed: new Date(0)
       });
+
+      // Başarılıysa sayacı 1 artır
+      if (!isPro) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          totalWordsAdded: increment(1)
+        });
+      }
+
       alert('Akıllıca havuza eklendi! ✨');
     } catch (error) {
       console.error("Error adding to pool:", error);
@@ -393,7 +439,7 @@ export default function TranslationPage() {
                       if (group.reverseMeanings.length === 0) return null;
                       return (
                         <div key={idx} style={{marginBottom: '1rem'}}>
-                          <div style={{color: '#a1a1aa', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.5rem'}}>
+                          <div style={{color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.5rem'}}>
                             {group.partOfSpeech.toLowerCase()}
                           </div>
                           {group.reverseMeanings.map((rev, rIdx) => {

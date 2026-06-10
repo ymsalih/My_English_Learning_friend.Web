@@ -340,6 +340,29 @@
 .history-stats {
   display: flex;
   gap: 1.5rem;
+  align-items: center;
+}
+
+.delete-test-btn {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 1rem;
+}
+
+.delete-test-btn:hover {
+  background: var(--error);
+  color: white;
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
 }
 
 .history-stat-pill {

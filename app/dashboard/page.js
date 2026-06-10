@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Video, Camera, PenTool, Layers, Award, TrendingUp, Target, Crown } from 'lucide-react';
+import { BookOpen, Video, Camera, PenTool, Layers, Award, TrendingUp, Target, Crown, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
 import { collection, doc, onSnapshot, getCountFromServer } from 'firebase/firestore';
@@ -13,6 +13,9 @@ const modules = [
   { id: 'my-pool', title: 'Kelime Havuzum', desc: 'Akıllı algoritmalarla kişiselleştirilmiş öğrenme sürecinizi yönetin.', icon: Layers, color: '#14b8a6', path: '/my-pool' },
   { id: 'learned', title: 'Öğrendiklerim', desc: 'Başarıyla tamamladığınız kelime arşivi ve ilerleme raporunuz.', icon: Award, color: '#10b981', path: '/learned' },
   { id: 'translation', title: 'Akıllı Çeviri & OCR', desc: 'Yapay zeka destekli metin ve görsel (kamera) çeviri asistanınız.', icon: PenTool, color: '#ec4899', path: '/translation' },
+  { id: 'test', title: 'Kendini Test Et', desc: 'Öğrendiğiniz kelimelerle kendinizi test edin ve gelişiminizi ölçün.', icon: Target, color: '#f59e0b', path: '/test' },
+  { id: 'ai-chat', title: 'Yapay Zeka Sohbet', desc: 'İngilizce mülakat koçu, gramer öğretmeni ve sohbet arkadaşınız.', icon: Sparkles, color: '#3b82f6', path: '/ai-chat', badge: 'YAPAY ZEKA' },
+  { id: 'story', title: 'Yapay Zeka Hikaye', desc: 'Kelime havuzunuzdaki sözcüklerden size özel hikayeler yaratın.', icon: Sparkles, color: '#f43f5e', path: '/story', badge: 'YENİ' },
   { id: 'video', title: 'Medya ile Pratik', desc: 'Gerçek hayat senaryoları ve premium video içeriklerle dinleme becerilerinizi keskinleştirin.', icon: Video, color: '#a855f7', path: '/video' }
 ];
 
@@ -121,6 +124,7 @@ export default function Dashboard() {
                 <h3>{mod.title}</h3>
                 <p>{mod.desc}</p>
               </div>
+              {mod.badge && <div className="module-badge">{mod.badge}</div>}
               <div className="module-arrow">→</div>
             </Link>
           );

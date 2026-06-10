@@ -26,6 +26,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      if (!email.includes('@')) {
+        setError('Lütfen geçerli bir e-posta adresi girin.');
+        setLoading(false);
+        return;
+      }
+
       if (isLogin) {
         await login(email, password);
       } else {
@@ -61,6 +67,11 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
+      if (!resetEmail.includes('@')) {
+        setError('Lütfen geçerli bir e-posta adresi girin.');
+        setLoading(false);
+        return;
+      }
       await resetPassword(resetEmail);
       setShowResetModal(false);
       setMessage('Sıfırlama bağlantısı gönderildi. Lütfen mail kutunuzu kontrol edin.');
@@ -125,7 +136,7 @@ export default function LoginPage() {
           <div className="input-group">
             <Mail className="input-icon" size={20} />
             <input 
-              type="email" 
+              type="text" 
               placeholder="E-posta" 
               className="input-field" 
               value={email}
@@ -191,7 +202,7 @@ export default function LoginPage() {
               <div className="input-group">
                 <Mail className="input-icon" size={20} />
                 <input 
-                  type="email" 
+                  type="text" 
                   placeholder="E-posta Adresiniz" 
                   className="input-field" 
                   value={resetEmail}

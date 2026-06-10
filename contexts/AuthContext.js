@@ -46,7 +46,20 @@ export const AuthProvider = ({ children }) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setUserData(data);
-            setIsPro(data.plan === 'pro');
+            
+            let proStatus = false;
+            if (data.plan === 'pro_monthly' || data.plan === 'pro_yearly' || data.plan === 'pro') {
+              if (data.expiryDate) {
+                const expiry = new Date(data.expiryDate);
+                if (expiry > new Date()) {
+                  proStatus = true;
+                }
+              } else {
+                // Sınırsız / Test kullanıcıları için
+                proStatus = data.plan === 'pro';
+              }
+            }
+            setIsPro(proStatus);
           }
         });
       } else {

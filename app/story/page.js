@@ -204,7 +204,14 @@ export default function StoryPage() {
             className="btn btn-secondary" 
             onClick={handleGenerateStory}
             disabled={selectedWordIds.length === 0 || generatingStory}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: selectedWordIds.length > 0 ? 'var(--primary)' : 'rgba(255,255,255,0.1)', color: 'white', border: 'none' }}
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              background: selectedWordIds.length > 0 ? 'var(--primary)' : 'var(--bg-card)', 
+              color: selectedWordIds.length > 0 ? 'white' : 'var(--text-muted)', 
+              border: selectedWordIds.length > 0 ? 'none' : '1px solid var(--border-color)' 
+            }}
           >
             <Sparkles size={18} /> Hikayeyi Oluştur ({selectedWordIds.length}/5)
           </button>
@@ -269,7 +276,7 @@ export default function StoryPage() {
               {storyWords.map((w, i) => <strong key={i} style={{color:'var(--primary)'}}>{w}{i < storyWords.length - 1 ? ', ' : ''}</strong>)}
             </p>
             
-            <div style={{background:'rgba(255,255,255,0.03)', padding:'20px', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.05)'}}>
+            <div style={{background:'var(--bg-card)', padding:'20px', borderRadius:'12px', border:'1px solid var(--border-color)'}}>
               {generatingStory ? (
                 <div style={{textAlign:'center', padding:'40px 20px'}}>
                   <div className="spinner" style={{margin:'0 auto 20px auto', borderColor:'var(--primary)', borderTopColor:'transparent'}}></div>

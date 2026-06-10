@@ -11,42 +11,72 @@ import './pricing.css';
 export default function PricingPage() {
   const { user, isPro } = useAuth();
   const router = useRouter();
-  const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isYearly, setIsYearly] = useState(false);
   
-  // Fake Card States for Simulation
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvc, setCvc] = useState('');
-
-  const handleUpgradeClick = () => {
+  const handleUpgradeClick = async () => {
     if (!user) {
       router.push('/login');
       return;
     }
-    setShowModal(true);
-  };
-
-  const handleSimulatedPayment = async (e) => {
-    e.preventDefault();
-    setLoading(true);
     
+    setLoading(true);
     try {
-      // Simulate network request to Iyzico/Banka
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Update Firebase directly (Simulating Webhook behavior)
-      await updateDoc(doc(db, 'users', user.uid), {
-        plan: 'pro'
+      const response = await fetch('/api/iyzico/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email || '',
+          displayName: user.displayName || '',
+          planType: isYearly ? 'yearly' : 'monthly'
+        })
       });
       
-      alert("Ödeme Başarılı! Pro özellikleriniz anında aktif edildi. 🎉");
-      setShowModal(false);
-      window.location.reload(); // Reload to refresh AuthContext state
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Ödeme başlatılamadı');
+      }
+
+      if (data.paymentPageUrl) {
+        // İyzico'nun kendi güvenli sayfasına yönlendir (Tavsiye edilen)
+        window.location.href = data.paymentPageUrl;
+      } else if (data.checkoutFormContent) {
+        // Eğer Iframe dönüyorsa, ekrana bir div açıp içine basıyoruz
+        const modalDiv = document.createElement('div');
+        modalDiv.id = 'iyzipay-checkout-form';
+        modalDiv.className = 'iyzico-modal-overlay';
+        
+        // Modal arkası karanlık arka plan
+        modalDiv.style.position = 'fixed';
+        modalDiv.style.top = '0';
+        modalDiv.style.left = '0';
+        modalDiv.style.width = '100vw';
+        modalDiv.style.height = '100vh';
+        modalDiv.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        modalDiv.style.zIndex = '9999';
+        modalDiv.style.display = 'flex';
+        modalDiv.style.justifyContent = 'center';
+        modalDiv.style.alignItems = 'center';
+        
+        // Iyzico'nun iframe kodunu içeren scripti çalıştır
+        modalDiv.innerHTML = data.checkoutFormContent;
+        document.body.appendChild(modalDiv);
+        
+        // İçindeki scripti tetikle (Next.js içinde innerHTML ile script çalışmaz, manuel append lazım)
+        const scriptRegex = new RegExp('<script\\\\b[^>]*>([\\\\s\\\\S]*?)<\\\\/script>', 'gm');
+        let match;
+        while ((match = scriptRegex.exec(data.checkoutFormContent))) {
+          const script = document.createElement('script');
+          script.text = match[1];
+          document.body.appendChild(script);
+        }
+      }
       
     } catch (error) {
-      console.error("Payment error:", error);
-      alert("Ödeme sırasında bir hata oluştu.");
+      console.error("Iyzico init error:", error);
+      alert("Ödeme sistemi yüklenirken hata oluştu: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -57,9 +87,25 @@ export default function PricingPage() {
       <header className="pricing-header">
         <h1>Sınırları Kaldırın. <span className="highlight">Akıcı Konuşun.</span></h1>
         <p>İngilizce öğrenme hızınızı 3x artırmak için ihtiyacınız olan tüm premium araçlara sınırsız erişin.</p>
+        
+        <div className="billing-toggle-container" style={{marginTop: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px'}}>
+          <span style={{color: !isYearly ? 'var(--primary)' : 'var(--text-muted)', fontWeight: !isYearly ? 'bold' : 'normal'}}>Aylık</span>
+          <label className="toggle-switch" style={{position: 'relative', display: 'inline-block', width: '60px', height: '34px'}}>
+            <input type="checkbox" checked={isYearly} onChange={() => setIsYearly(!isYearly)} style={{opacity: 0, width: 0, height: 0}} />
+            <span className="slider round" style={{position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'var(--bg-card)', transition: '.4s', borderRadius: '34px', border: '2px solid var(--primary)'}}>
+              <span style={{position: 'absolute', content: '""', height: '26px', width: '26px', left: isYearly ? '28px' : '2px', bottom: '2px', backgroundColor: 'var(--primary)', transition: '.4s', borderRadius: '50%'}}></span>
+            </span>
+          </label>
+          <span style={{color: isYearly ? 'var(--primary)' : 'var(--text-muted)', fontWeight: isYearly ? 'bold' : 'normal', position: 'relative'}}>
+            Yıllık
+            <span style={{position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#10b981', color: 'white', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px', whiteSpace: 'nowrap'}}>
+              ~ %22 İndirim
+            </span>
+          </span>
+        </div>
       </header>
 
-      <div className="pricing-grid">
+      <div className="pricing-grid" style={{marginTop: '2rem'}}>
         {/* FREE PLAN */}
         <div className="pricing-card free glass-panel">
           <h2 className="plan-name">Başlangıç</h2>
@@ -71,12 +117,10 @@ export default function PricingPage() {
           
           <ul className="features-list">
             <li><Check size={20} className="feature-icon included" /> Kelime Havuzuna 50 Kelime Ekleme</li>
-            <li><Check size={20} className="feature-icon included" /> Temel Kelime Paketleri (A1-A2)</li>
-            <li><Check size={20} className="feature-icon included" /> Günde 3 Görsel (Kamera) Çevirisi</li>
-            <li><Check size={20} className="feature-icon included" /> Sınırsız Metin Çevirisi</li>
-            <li className="excluded"><X size={20} className="feature-icon excluded" /> Gelişmiş Deneme Sınavları</li>
-            <li className="excluded"><X size={20} className="feature-icon excluded" /> YDS/TOEFL Kelime Paketleri</li>
-            <li className="excluded"><X size={20} className="feature-icon excluded" /> Reklamsız Deneyim</li>
+            <li><Check size={20} className="feature-icon included" /> Günde 5 Yapay Zeka Sohbeti</li>
+            <li><Check size={20} className="feature-icon included" /> Günde 5 Yapay Zeka Hikayesi</li>
+            <li><Check size={20} className="feature-icon included" /> Günde 5 Telaffuz (Shadowing) Çalışması</li>
+            <li><Check size={20} className="feature-icon included" /> Günde 3 Görsel (OCR) Çevirisi</li>
           </ul>
           
           <button className="action-btn secondary" disabled>
@@ -91,19 +135,18 @@ export default function PricingPage() {
             Premium Pro <Crown size={24} color="#fbbf24" />
           </h2>
           <div className="plan-price">
-            <span className="price-currency">₺</span>149
-            <span className="price-period">/aylık</span>
+            <span className="price-currency">₺</span>{isYearly ? '925' : '100'}
+            <span className="price-period">/{isYearly ? 'yıllık' : 'aylık'}</span>
           </div>
-          <p className="plan-description">Ciddi dil öğrenenler ve sınırları sevmeyenler için tam erişim.</p>
+          <p className="plan-description">Ciddi dil öğrenenler ve kısıtlamalardan sıkılanlar için tam erişim.</p>
           
           <ul className="features-list">
             <li><Check size={20} className="feature-icon included" /> Sınırsız Kelime Havuzu Kapasitesi</li>
-            <li><Check size={20} className="feature-icon included" /> Tüm İleri Seviye Kelime Paketleri</li>
+            <li><Check size={20} className="feature-icon included" /> Sınırsız Yapay Zeka Sohbeti</li>
+            <li><Check size={20} className="feature-icon included" /> Sınırsız Yapay Zeka Hikayesi</li>
+            <li><Check size={20} className="feature-icon included" /> Sınırsız Telaffuz Koçu (Shadowing)</li>
             <li><Check size={20} className="feature-icon included" /> Sınırsız Kamera/Görsel Çevirisi (OCR)</li>
-            <li><Check size={20} className="feature-icon included" /> Dinamik Örnek Cümle Analizi</li>
-            <li><Check size={20} className="feature-icon included" /> Gelişmiş Deneme Sınavları</li>
-            <li><Check size={20} className="feature-icon included" /> YDS/TOEFL ve İş İngilizcesi Modülleri</li>
-            <li><Check size={20} className="feature-icon included" /> Tamamen Reklamsız Deneyim</li>
+            <li><Check size={20} className="feature-icon included" /> 7/24 Öncelikli Eğitim Desteği</li>
           </ul>
           
           {isPro ? (
@@ -111,80 +154,12 @@ export default function PricingPage() {
               Aktif Paketiniz
             </button>
           ) : (
-            <button className="action-btn primary" onClick={handleUpgradeClick}>
-              Hemen Premium'a Geç
+            <button className="action-btn primary" onClick={handleUpgradeClick} disabled={loading}>
+              {loading ? 'Güvenli Bağlantı Kuruluyor...' : 'Hemen Premium\'a Geç'}
             </button>
           )}
         </div>
       </div>
-
-      {/* PAYMENT SIMULATION MODAL */}
-      {showModal && (
-        <div className="payment-modal-overlay">
-          <div className="payment-modal">
-            <button className="close-modal" onClick={() => setShowModal(false)}><XCircle size={28} /></button>
-            <h2 style={{marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '10px'}}>
-              <CreditCard color="var(--primary)" /> Güvenli Ödeme
-            </h2>
-            <p style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>Test (Sandbox) ortamındasınız. Lütfen sahte kredi kartı bilgileri giriniz. Gerçek para çekilmez.</p>
-            
-            <form className="payment-form" onSubmit={handleSimulatedPayment}>
-              <div className="form-group">
-                <label>Kart Üzerindeki İsim</label>
-                <input type="text" required placeholder="Ad Soyad" className="payment-input" />
-              </div>
-              
-              <div className="form-group">
-                <label>Kart Numarası (Test İçin: 4111 1111 1111 1111)</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="0000 0000 0000 0000" 
-                  maxLength="16" 
-                  className="payment-input"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, ''))}
-                />
-              </div>
-              
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Son Kullanma (AA/YY)</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="12/26" 
-                    maxLength="5" 
-                    className="payment-input" 
-                    value={expiry}
-                    onChange={(e) => setExpiry(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>CVC (Güvenlik Kodu)</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="123" 
-                    maxLength="3" 
-                    className="payment-input"
-                    value={cvc}
-                    onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))}
-                  />
-                </div>
-              </div>
-              
-              <button type="submit" className="action-btn primary" disabled={loading} style={{marginTop: '1rem'}}>
-                {loading ? 'İşleniyor...' : '149 ₺ Güvenli Öde'}
-              </button>
-              
-              <div className="secure-badge">
-                <ShieldCheck size={18} /> 256-bit SSL Güvencesiyle İyzico Altyapısı
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

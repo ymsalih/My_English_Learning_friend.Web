@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# GÜVENLİK (KESİNLİKLE GİTHUBA GİTMEMESİ GEREKENLER)
+# .env* satırı zaten yukarıda var ama garantiye alıyoruz:
+.env.local
+.env.development
+.env.production
+# Eğer yanlışlıkla proje içine indirirseniz diye Firebase Admin JSON dosyaları:
+*firebase-adminsdk*.json
+*serviceAccount*.json
+firebase-credentials.json
+iyzico-keys.txt

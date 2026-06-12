@@ -281,11 +281,30 @@
 }
 
 @media (max-width: 600px) {
+  .setup-card {
+    padding: 1.5rem 1rem;
+    margin-top: 1.5rem;
+  }
+  .setup-title {
+    font-size: 1.6rem;
+  }
+  .count-number {
+    font-size: 2.5rem;
+  }
   .flashcard {
-    height: 260px;
+    height: 220px;
+  }
+  .flashcard-front, .flashcard-back {
+    padding: 1rem;
   }
   .flashcard h2 {
-    font-size: 2.2rem;
+    font-size: 1.8rem;
+  }
+  .speak-btn-corner {
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
   }
   .action-buttons-row {
     flex-direction: row;
@@ -293,14 +312,25 @@
     margin-top: 1.5rem;
   }
   .action-card-btn {
-    padding: 1rem 0.25rem;
-    font-size: 0.85rem;
+    padding: 0.75rem 0.25rem;
+    font-size: 0.8rem;
     gap: 0.5rem;
     border-radius: var(--radius-md);
   }
   .action-card-btn svg {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .stat-box {
+    padding: 1.5rem 1rem;
+  }
+  .stat-box p {
+    font-size: 2.5rem;
   }
 }
 

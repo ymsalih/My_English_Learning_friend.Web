@@ -268,4 +268,12 @@
   .words-list {
     gap: 0.75rem;
   }
+
+  .story-layout {
+    flex-direction: column-reverse;
+  }
+  
+  .story-sidebar, .story-content {
+    width: 100%;
+  }
 }

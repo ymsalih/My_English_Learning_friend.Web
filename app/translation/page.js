@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { db } from '../../lib/firebase';
@@ -120,14 +121,41 @@ export default function TranslationPage() {
       const isSingleWord = !textToTranslate.includes(' ');
       if (isSingleWord) {
         const engWord = isEnToTr ? textToTranslate.toLowerCase() : mainTrans.toLowerCase();
+        
+        // --- ÖNBELLEK KONTROLÜ (CACHE) ---
+        try {
+          const { getDoc } = await import('firebase/firestore');
+          const cacheRef = doc(db, 'dictionary_cache', engWord);
+          const cacheSnap = await getDoc(cacheRef);
+          
+          if (cacheSnap.exists()) {
+             const cachedData = cacheSnap.data();
+             setSearchedEnglishWord(engWord);
+             setImageUrl(cachedData.imageUrl || '');
+             setGroupedMeanings(cachedData.groupedMeanings || []);
+             setLoading(false);
+             return;
+          }
+        } catch (err) {
+          console.error("Önbellek okuma hatası:", err);
+        }
+        // --- END CACHE ---
+
         setSearchedEnglishWord(engWord);
         
-        // Pexels
-        fetch(`${PROXY_URL}?service=pexels&word=${encodeURIComponent(engWord)}`)
-          .then(r => r.json())
-          .then(d => {
-            if (d.photos && d.photos.length > 0) setImageUrl(d.photos[0].src.medium);
-          }).catch(console.error);
+        let fetchedImageUrl = '';
+        try {
+          const pRes = await fetch(`${PROXY_URL}?service=pexels&word=${encodeURIComponent(engWord)}`);
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            if (pData.photos && pData.photos.length > 0) {
+              fetchedImageUrl = pData.photos[0].src.medium;
+              setImageUrl(fetchedImageUrl);
+            }
+          }
+        } catch (error) {
+          console.error("Pexels error:", error);
+        }
 
         // Dictionary
         const newGrouped = [];
@@ -216,6 +244,21 @@ export default function TranslationPage() {
           }
           setGroupedMeanings(newGrouped);
         }
+
+        // --- ÖNBELLEĞE KAYDET (CACHE SAVE) ---
+        if (newGrouped.length > 0 || fetchedImageUrl) {
+          try {
+            const { setDoc } = await import('firebase/firestore');
+            await setDoc(doc(db, 'dictionary_cache', engWord), {
+              imageUrl: fetchedImageUrl,
+              groupedMeanings: newGrouped,
+              timestamp: serverTimestamp()
+            });
+          } catch(err) {
+            console.error("Önbelleğe yazma hatası:", err);
+          }
+        }
+        // --- END CACHE SAVE ---
       }
     } catch (error) {
       console.error("Translation error:", error);
@@ -403,7 +446,7 @@ export default function TranslationPage() {
           <div className="dictionary-card animate-fade-in">
             {imageUrl && (
               <div className="word-image">
-                <img src={imageUrl} alt="Context" loading="lazy" />
+                <Image src={imageUrl} alt="Context" width={400} height={250} style={{objectFit: 'cover', width: '100%', height: 'auto', borderRadius: '12px'}} />
               </div>
             )}
             

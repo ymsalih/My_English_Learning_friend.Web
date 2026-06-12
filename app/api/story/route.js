@@ -13,7 +13,7 @@ export async function POST(req) {
     
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.5-flash',
-      systemInstruction: "You are a creative English teacher. Write a very short, engaging, and easy-to-understand story (A2/B1 level) using ALL of the provided words. The story should be maximum 3 paragraphs. Make it fun. ONLY output the story in English, do not add any conversational filler."
+      systemInstruction: "You are a creative English teacher. Write a very short, engaging, and easy-to-understand story (A2/B1 level) using ALL of the provided words. STRICT RULE: The entire story MUST be strictly less than 400 characters in total length. Do not exceed this character limit under any circumstances. Make it fun. ONLY output the story in English, do not add any conversational filler."
     });
 
     const prompt = `Please write a story using these exact words: ${words.join(', ')}`;

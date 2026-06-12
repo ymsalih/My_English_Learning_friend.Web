@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Video, PlayCircle } from 'lucide-react';
@@ -74,11 +75,13 @@ export default function VideoPage() {
               {videos.map((video) => (
                 <div key={video.docId} className="video-card glass-panel" onClick={() => setSelectedVideo(video)}>
                   <div className="thumbnail-wrapper">
-                    <img 
+                    <Image 
                       src={`https://img.youtube.com/vi/${video.id}/hqdefault.jpg`} 
-                      alt={video.title} 
+                      alt={video.title || 'Video'} 
                       className="thumbnail-img"
-                      loading="lazy"
+                      width={480}
+                      height={360}
+                      style={{objectFit: 'cover'}}
                     />
                     <div className="play-overlay">
                       <PlayCircle size={48} color="white" />

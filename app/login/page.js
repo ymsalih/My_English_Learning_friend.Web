@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, Sparkles, Target, Bot, BookOpen, ArrowRight } from 'lucide-react';
 import './login.css';
 
 export default function LoginPage() {
@@ -17,7 +19,7 @@ export default function LoginPage() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
 
-  const { login, register, resetPassword } = useAuth();
+  const { login, register, resetPassword, user } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,105 +93,145 @@ export default function LoginPage() {
 
   return (
     <div className="login-container">
-      <div className="bg-shapes">
-        <div className="shape shape-1"></div>
-        <div className="shape shape-2"></div>
-      </div>
-      
-      <div className="login-card glass-panel animate-fade-in">
-        <div className="logo-hero">
-          <span className="logo-hero-text">İD</span>
+      {/* ===== LEFT PANEL ===== */}
+      <div className="login-left">
+        <div className="login-left-content animate-fade-in">
+          <Link href={user ? "/dashboard" : "/"} style={{textDecoration: 'none'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '3rem'}}>
+              <Image src="/logo.png" alt="Owlish Logo" width={40} height={40} style={{borderRadius: '10px', objectFit: 'cover'}} />
+              <span className="brand-logo" style={{marginBottom: 0}}>Owlish</span>
+            </div>
+          </Link>
+
+          <h1>{isLogin ? 'Tekrar Hoş Geldiniz.' : 'Dil Yolculuğunuz Başlıyor.'}</h1>
+          <p className="left-desc">
+            {isLogin
+              ? 'Kelime havuzunuza kaldığınız yerden devam edin, yapay zeka koçunuzla pratik yapın ve ilerlemenizi takip edin.'
+              : 'Yapay zeka destekli İngilizce öğrenme platformuyla bugün tanışın. Kelime haznenizi genişletin, özgüvenle konuşun.'}
+          </p>
+
+          <div className="login-features">
+            <div className="login-feature-item">
+              <div className="login-feature-icon" style={{background: 'rgba(59,130,246,0.12)', color: '#3b82f6'}}>
+                <Bot size={20} />
+              </div>
+              <span className="login-feature-text"><strong>AI Koç</strong> — Mülakat simülasyonu ve sohbet pratiği</span>
+            </div>
+            <div className="login-feature-item">
+              <div className="login-feature-icon" style={{background: 'rgba(245,158,11,0.12)', color: '#f59e0b'}}>
+                <Target size={20} />
+              </div>
+              <span className="login-feature-text"><strong>Test Sistemi</strong> — Akıllı algoritmalarla kelime ustalaşma</span>
+            </div>
+            <div className="login-feature-item">
+              <div className="login-feature-icon" style={{background: 'rgba(20,184,166,0.12)', color: '#14b8a6'}}>
+                <BookOpen size={20} />
+              </div>
+              <span className="login-feature-text"><strong>Kelime Havuzu</strong> — Kişiselleştirilmiş öğrenme sistemi</span>
+            </div>
+          </div>
         </div>
-        
-        <h2>{isLogin ? 'Hoş Geldin! 👋' : 'Aramıza Katıl 💕'}</h2>
-        <p className="subtitle">
-          {isLogin ? 'Kelimelerin dünyasına tekrar hoş geldin.' : 'İngilizce öğrenme serüvenine başla.'}
-        </p>
+      </div>
 
-        {error && (
-          <div className="alert error-alert">
-            <AlertCircle size={18} /> {error}
+      {/* ===== RIGHT PANEL ===== */}
+      <div className="login-right">
+        <div className="login-card animate-fade-in" style={{animationDelay: '0.15s'}}>
+          <div style={{display: 'flex', justifyContent: 'center', marginBottom: '2rem'}}>
+            <Image src="/logo.png" alt="Owlish Logo" width={64} height={64} style={{borderRadius: '1rem', boxShadow: '0 8px 25px rgba(99, 102, 241, 0.25)', objectFit: 'cover'}} />
           </div>
-        )}
-        
-        {message && (
-          <div className="alert success-alert">
-             {message}
-          </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="login-form">
-          {!isLogin && (
+          <h2>{isLogin ? 'Giriş Yap' : 'Hesap Oluştur'}</h2>
+          <p className="subtitle">
+            {isLogin ? 'Hesabınıza giriş yaparak devam edin.' : 'Ücretsiz hesabınızı oluşturun ve öğrenmeye başlayın.'}
+          </p>
+
+          {error && (
+            <div className="alert error-alert">
+              <AlertCircle size={16} /> {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="alert success-alert">
+              {message}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="login-form">
+            {!isLogin && (
+              <div className="input-group">
+                <User className="input-icon" size={18} />
+                <input
+                  type="text"
+                  placeholder="Kullanıcı Adı"
+                  className="input-field"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required={!isLogin}
+                />
+              </div>
+            )}
+
             <div className="input-group">
-              <User className="input-icon" size={20} />
-              <input 
-                type="text" 
-                placeholder="Kullanıcı Adı" 
-                className="input-field" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required={!isLogin}
+              <Mail className="input-icon" size={18} />
+              <input
+                type="text"
+                placeholder="E-posta adresi"
+                className="input-field"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
-          )}
 
-          <div className="input-group">
-            <Mail className="input-icon" size={20} />
-            <input 
-              type="text" 
-              placeholder="E-posta" 
-              className="input-field" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="input-group">
-            <Lock className="input-icon" size={20} />
-            <input 
-              type="password" 
-              placeholder="Şifre" 
-              className="input-field" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          {!isLogin && (
             <div className="input-group">
-              <Lock className="input-icon" size={20} />
-              <input 
-                type="password" 
-                placeholder="Şifreyi Onayla" 
-                className="input-field" 
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required={!isLogin}
+              <Lock className="input-icon" size={18} />
+              <input
+                type="password"
+                placeholder="Şifre"
+                className="input-field"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
-          )}
 
-          {isLogin && (
-            <div className="forgot-password">
-              <button type="button" onClick={() => { setShowResetModal(true); setError(''); setMessage(''); }}>Şifremi unuttum</button>
-            </div>
-          )}
+            {!isLogin && (
+              <div className="input-group">
+                <Lock className="input-icon" size={18} />
+                <input
+                  type="password"
+                  placeholder="Şifreyi Onayla"
+                  className="input-field"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required={!isLogin}
+                />
+              </div>
+            )}
 
-          <button type="submit" className="btn btn-primary submit-btn" disabled={loading}>
-            {loading ? <div className="spinner-small"></div> : (isLogin ? 'Giriş Yap' : 'Kayıt Ol')}
-          </button>
-        </form>
+            {isLogin && (
+              <div className="forgot-password">
+                <button type="button" onClick={() => { setShowResetModal(true); setError(''); setMessage(''); }}>Şifremi unuttum</button>
+              </div>
+            )}
 
-        <div className="switch-mode">
-          <button type="button" onClick={() => {
-            setIsLogin(!isLogin);
-            setError('');
-            setMessage('');
-          }}>
-            {isLogin ? 'Yeni kayıt oluştur' : 'Zaten hesabım var, Giriş yap'}
-          </button>
+            <button type="submit" className="btn btn-primary submit-btn" disabled={loading}>
+              {loading ? <div className="spinner-small"></div> : (
+                <>{isLogin ? 'Giriş Yap' : 'Kayıt Ol'} <ArrowRight size={18} /></>
+              )}
+            </button>
+          </form>
+
+          <div className="switch-mode">
+            <button type="button" onClick={() => {
+              setIsLogin(!isLogin);
+              setError('');
+              setMessage('');
+            }}>
+              {isLogin ? <>Hesabınız yok mu? <span>Kayıt olun</span></> : <>Zaten hesabınız var mı? <span>Giriş yapın</span></>}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -200,11 +242,11 @@ export default function LoginPage() {
             <p>Hesabınıza kayıtlı e-posta adresini girin, size bir sıfırlama bağlantısı gönderelim.</p>
             <form onSubmit={handleForgotPassword} style={{marginTop: '1.5rem'}}>
               <div className="input-group">
-                <Mail className="input-icon" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="E-posta Adresiniz" 
-                  className="input-field" 
+                <Mail className="input-icon" size={18} />
+                <input
+                  type="text"
+                  placeholder="E-posta Adresiniz"
+                  className="input-field"
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   required

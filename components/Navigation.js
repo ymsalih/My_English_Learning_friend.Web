@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
@@ -24,7 +25,7 @@ const navItems = [
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { logout, isPro } = useAuth();
+  const { logout, isPro, user } = useAuth();
 
   // Don't show navigation on splash or login screens
   if (pathname === '/' || pathname === '/login') {
@@ -35,7 +36,12 @@ export default function Navigation() {
     <nav className="sidebar">
       <div className="sidebar-header">
         <div className="logo-container" style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
-          <span className="logo-text" style={{marginBottom: isPro ? '0.5rem' : '0'}}>İngilizce Destek</span>
+          <Link href={user ? "/dashboard" : "/"} style={{textDecoration: 'none'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: isPro ? '0.5rem' : '0'}}>
+              <Image src="/logo.png" alt="Owlish Logo" width={32} height={32} style={{borderRadius: '8px', objectFit: 'cover'}} />
+              <span className="logo-text">Owlish</span>
+            </div>
+          </Link>
           {isPro && (
             <div style={{background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', color: '#fff', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 10px rgba(251, 191, 36, 0.3)', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
               <Crown size={14} /> Premium Aktif

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, orderBy, limit } from 'firebase/firestore';
 import { RefreshCcw, Trash2, Volume2, Award, Search } from 'lucide-react';
 import { speakWord } from '../../lib/tts';
 import '../my-pool/pool.css'; // Reusing the same CSS
@@ -14,33 +14,80 @@ export default function LearnedWordsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [visibleCount, setVisibleCount] = useState(20);
+  const observerTarget = useRef(null);
+
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
+    // Denenecek ilk sorgu (İndeks gerektirebilir)
+    const qWithIndex = query(
       collection(db, 'users', user.uid, 'words'),
-      where('isLearned', '==', true)
+      where('isLearned', '==', true),
+      orderBy('timestamp', 'desc'),
+      limit(visibleCount)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    let unsubscribeFallback = null;
+
+    const unsubscribe = onSnapshot(qWithIndex, (snapshot) => {
       const wordsData = [];
       snapshot.forEach((doc) => {
         const data = doc.data({ serverTimestamps: 'estimate' });
         wordsData.push({ id: doc.id, ...data });
       });
-
-      wordsData.sort((a, b) => {
-        const timeA = a.timestamp?.seconds || 0;
-        const timeB = b.timestamp?.seconds || 0;
-        return timeB - timeA;
-      });
-
       setWords(wordsData);
       setLoading(false);
+    }, (error) => {
+      console.warn("Firestore index error, falling back to local sorting:", error);
+      // İndeks yoksa tümünü çekip yerelde sınırla (Fallback)
+      const qFallback = query(
+        collection(db, 'users', user.uid, 'words'),
+        where('isLearned', '==', true)
+      );
+      
+      unsubscribeFallback = onSnapshot(qFallback, (snapshot) => {
+        const wordsData = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data({ serverTimestamps: 'estimate' });
+          wordsData.push({ id: doc.id, ...data });
+        });
+        
+        wordsData.sort((a, b) => {
+          const timeA = a.timestamp?.seconds || 0;
+          const timeB = b.timestamp?.seconds || 0;
+          return timeB - timeA;
+        });
+
+        setWords(wordsData.slice(0, visibleCount));
+        setLoading(false);
+      });
     });
 
-    return () => unsubscribe();
-  }, [user]);
+    return () => {
+      unsubscribe();
+      if (unsubscribeFallback) unsubscribeFallback();
+    };
+  }, [user, visibleCount]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + 20);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) observer.unobserve(observerTarget.current);
+    };
+  }, [observerTarget.current]);
 
   // Removed local speakWord
 
@@ -131,6 +178,9 @@ export default function LearnedWordsPage() {
               </div>
             </div>
           ))}
+          {filteredWords.length >= visibleCount && (
+            <div ref={observerTarget} style={{ height: '20px', width: '100%' }}></div>
+          )}
         </div>
       )}
     </div>

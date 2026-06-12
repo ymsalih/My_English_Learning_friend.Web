@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Newspaper, ExternalLink } from 'lucide-react';
@@ -54,10 +55,12 @@ export default function NewsPage() {
               className="news-card glass-panel"
             >
               {item.image && (
-                <img 
+                <Image 
                   src={item.image} 
                   alt={item.title || 'Haber Görseli'} 
-                  loading="lazy"
+                  width={400}
+                  height={250}
+                  style={{objectFit: 'cover', width: '100%', height: '200px'}}
                 />
               )}
               <div className="news-content">

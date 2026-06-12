@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -91,16 +91,16 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, pathname, router, loading]);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     if (!userCredential.user.emailVerified) {
       await signOut(auth);
       throw { code: 'auth/unverified-email', message: 'Lütfen giriş yapmadan önce e-posta adresinizi doğrulayın.' };
     }
     return userCredential;
-  };
+  }, []);
 
-  const register = async (email, password, username) => {
+  const register = useCallback(async (email, password, username) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
     if (userCredential.user) {
@@ -130,19 +130,30 @@ export const AuthProvider = ({ children }) => {
     }
     
     return userCredential;
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await signOut(auth);
     router.push('/login');
-  };
+  }, [router]);
 
-  const resetPassword = async (email) => {
+  const resetPassword = useCallback(async (email) => {
     return sendPasswordResetEmail(auth, email);
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    user,
+    userData,
+    isPro,
+    loading,
+    login,
+    register,
+    logout,
+    resetPassword
+  }), [user, userData, isPro, loading, login, register, logout, resetPassword]);
 
   return (
-    <AuthContext.Provider value={{ user, userData, isPro, login, register, logout, resetPassword, loading }}>
+    <AuthContext.Provider value={contextValue}>
       {!loading && children}
     </AuthContext.Provider>
   );

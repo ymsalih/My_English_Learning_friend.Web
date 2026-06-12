@@ -11,14 +11,14 @@ const outfit = Outfit({
 });
 
 export const metadata = {
-  title: 'İngilizce Destek Uygulaması',
+  title: 'Owlish',
   description: 'İngilizce öğrenmenin en modern ve kolay yolu',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="tr" suppressHydrationWarning className={outfit.variable}>
-      <body>
+      <body suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

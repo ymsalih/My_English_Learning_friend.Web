@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['firebase-admin'],
+  serverExternalPackages: ['iyzipay', 'firebase-admin'],
+  outputFileTracingIncludes: {
+    '/api/**/*': ['./node_modules/iyzipay/lib/resources/**/*'],
+  },
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },

@@ -12,6 +12,13 @@ export async function POST(req) {
     const body = await req.json();
     const { uid, email, displayName, planType = 'monthly' } = body;
 
+    // 1. API ANAHTARLARININ VERİTABANINDAN/VERCEL'DEN GELDİĞİNİ KONTROL ET
+    if (!process.env.IYZICO_API_KEY || !process.env.IYZICO_SECRET_KEY) {
+      return NextResponse.json({ 
+        error: 'İyzico API şifreleri eksik! Lütfen Vercel panelindeki Environment Variables kısmında IYZICO_API_KEY ve IYZICO_SECRET_KEY anahtarlarının doğru kaydedildiğinden emin olun.' 
+      }, { status: 400 });
+    }
+
     if (!uid) {
       return NextResponse.json({ error: 'User UID is required' }, { status: 400 });
     }
@@ -82,23 +89,27 @@ export async function POST(req) {
       ]
     };
 
-    return new Promise((resolve, reject) => {
-      iyzipay.checkoutFormInitialize.create(request, function (err, result) {
-        if (err) {
-          console.error("Iyzico Error:", err);
-          resolve(NextResponse.json({ error: 'Ödeme sistemi hatası', details: err }, { status: 500 }));
-        } else if (result.status === 'success') {
-          // result.checkoutFormContent içinde iframe HTML kodu döner
-          resolve(NextResponse.json({
-            checkoutFormContent: result.checkoutFormContent,
-            paymentPageUrl: result.paymentPageUrl,
-            token: result.token
-          }));
-        } else {
-          console.error("Iyzico Fail:", result);
-          resolve(NextResponse.json({ error: result.errorMessage || 'Ödeme başlatılamadı' }, { status: 400 }));
-        }
-      });
+    return new Promise((resolve) => {
+      try {
+        iyzipay.checkoutFormInitialize.create(request, function (err, result) {
+          if (err) {
+            console.error("Iyzico Error:", err);
+            resolve(NextResponse.json({ error: 'Ödeme sistemi hatası', details: err }, { status: 500 }));
+          } else if (result && result.status === 'success') {
+            resolve(NextResponse.json({
+              checkoutFormContent: result.checkoutFormContent,
+              paymentPageUrl: result.paymentPageUrl,
+              token: result.token
+            }));
+          } else {
+            console.error("Iyzico Fail:", result);
+            resolve(NextResponse.json({ error: result?.errorMessage || 'Ödeme başlatılamadı' }, { status: 400 }));
+          }
+        });
+      } catch (innerErr) {
+        console.error("Iyzico Sync Crash:", innerErr);
+        resolve(NextResponse.json({ error: 'İyzico modülü çöktü: ' + innerErr.message }, { status: 500 }));
+      }
     });
 
   } catch (error) {

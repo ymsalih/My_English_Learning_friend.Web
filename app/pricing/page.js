@@ -33,7 +33,12 @@ export default function PricingPage() {
         })
       });
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error('Sunucu hatası: Lütfen Vercel panelindeki şifrelerin doğru eklendiğinden ve sitenin yeniden yüklendiğinden (Redeploy) emin olun.');
+      }
       
       if (!response.ok) {
         throw new Error(data.error || 'Ödeme başlatılamadı');

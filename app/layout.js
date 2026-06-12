@@ -13,6 +13,24 @@ const outfit = Outfit({
 export const metadata = {
   title: 'Owlish',
   description: 'İngilizce öğrenmenin en modern ve kolay yolu',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'Owlish',
+    statusBarStyle: 'black-translucent',
+  },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Ekranda yanlışlıkla büyütme/küçültme yapılmasını engeller
 };
 
 export default function RootLayout({ children }) {

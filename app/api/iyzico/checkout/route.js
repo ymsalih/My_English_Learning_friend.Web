@@ -1,12 +1,6 @@
 import { NextResponse } from 'next/server';
 import Iyzipay from 'iyzipay';
 
-const iyzipay = new Iyzipay({
-  apiKey: process.env.IYZICO_API_KEY,
-  secretKey: process.env.IYZICO_SECRET_KEY,
-  uri: 'https://sandbox-api.iyzipay.com'
-});
-
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -17,6 +11,18 @@ export async function POST(req) {
       return NextResponse.json({ 
         error: 'İyzico API şifreleri eksik! Lütfen Vercel panelindeki Environment Variables kısmında IYZICO_API_KEY ve IYZICO_SECRET_KEY anahtarlarının doğru kaydedildiğinden emin olun.' 
       }, { status: 400 });
+    }
+
+    // 2. İyzico'yu SADECE request geldiğinde başlatıyoruz (Sayfa yüklenirken çökmeyi engeller)
+    let iyzipay;
+    try {
+      iyzipay = new Iyzipay({
+        apiKey: process.env.IYZICO_API_KEY,
+        secretKey: process.env.IYZICO_SECRET_KEY,
+        uri: 'https://sandbox-api.iyzipay.com'
+      });
+    } catch (initErr) {
+      return NextResponse.json({ error: 'İyzico başlatılamadı: ' + initErr.message }, { status: 500 });
     }
 
     if (!uid) {

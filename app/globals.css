@@ -320,30 +320,45 @@ h3 { font-size: 1.5rem; }
 
 @media (max-width: 768px) {
   body {
-    background-attachment: scroll; /* Mobil Safari FPS drop çözümü */
+    background-attachment: scroll;
   }
   .main-content {
     margin-left: 0;
     padding: 1rem;
-    padding-bottom: 6rem;
+    padding-bottom: 5.5rem;
   }
-  /* Mobilde GPU kasmasını önlemek için ağır cam efektini kapatıyoruz */
   .glass-panel {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     background: var(--surface);
     border: 1px solid var(--glass-border-hover);
   }
-  /* Dev başlıkları ve dolguları mobilde küçültme */
-  h1 { font-size: 2.2rem; }
-  h2 { font-size: 1.8rem; }
-  h3 { font-size: 1.3rem; }
+  /* Disable hover animations on mobile */
+  .glass-panel:hover {
+    transform: none;
+  }
+  .glass-panel:hover::before {
+    left: -100%;
+  }
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.3rem; }
+  h3 { font-size: 1.1rem; }
   .btn {
-    padding: 0.75rem 1.25rem;
-    font-size: 0.95rem;
+    padding: 0.65rem 1.1rem;
+    font-size: 0.875rem;
   }
   .page-header {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .page-header p {
+    font-size: 0.9rem;
+  }
+  .empty-state {
+    padding: 2.5rem 1.5rem;
+  }
+  .input-field {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
   }
 }
 

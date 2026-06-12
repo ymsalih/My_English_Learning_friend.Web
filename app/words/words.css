@@ -153,3 +153,33 @@
   border-color: rgba(16, 185, 129, 0.3);
   box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
 }
+
+@media (max-width: 768px) {
+  .words-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .package-word-card {
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+  .level-badge {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
+  .package-word-eng {
+    font-size: 1.1rem;
+  }
+  .package-word-tr {
+    font-size: 0.95rem;
+  }
+  .action-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .level-btn {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.9rem;
+  }
+}

@@ -274,3 +274,12 @@
   font-weight: 500;
   margin-top: 1rem;
 }
+
+@media (max-width: 768px) {
+  .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+  .pricing-card {
+    padding: 1.5rem;
+  }
+}

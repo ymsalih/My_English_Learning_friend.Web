@@ -148,57 +148,196 @@
   filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
 }
 
+/* Desktop: show desktop-links, hide mobile-links */
+.mobile-links {
+  display: none;
+}
+
+/* Mobile Menu Overlay */
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+.mobile-menu-content {
+  width: 100%;
+  max-height: 85vh;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 1.5rem;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+}
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.mobile-menu-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.mobile-menu-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+
+.mobile-menu-close:hover {
+  background: var(--glass-border);
+}
+
+.mobile-menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mobile-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.mobile-menu-link:hover,
+.mobile-menu-link.active {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--foreground);
+}
+
+.mobile-menu-link.active {
+  color: var(--primary);
+}
+
+.mobile-menu-link.logout {
+  color: #fca5a5;
+}
+
+.mobile-menu-link.logout:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.mobile-menu-footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Mobile Bottom Navigation */
 @media (max-width: 768px) {
   .sidebar {
     top: auto;
     bottom: 0;
     width: 100%;
-    height: 80px;
+    height: auto;
     flex-direction: row;
     border-right: none;
     border-top: 1px solid var(--sidebar-border);
-    padding: 0 0.5rem;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+    padding: 0;
+    box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.6);
     background: var(--sidebar-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 
   .sidebar-header, .sidebar-footer {
     display: none;
   }
 
-  .sidebar-links {
+  /* Hide desktop links on mobile */
+  .desktop-links {
+    display: none;
+  }
+
+  /* Show mobile links */
+  .mobile-links {
+    display: flex;
     flex-direction: row;
     justify-content: space-around;
     align-items: center;
-    padding: 0;
+    padding: 0.5rem 0.25rem;
+    padding-bottom: env(safe-area-inset-bottom, 0.5rem);
     width: 100%;
-    overflow-x: auto;
+    overflow: visible;
+    gap: 0;
   }
 
-  .nav-link {
+  .mobile-links .nav-link {
     flex-direction: column;
-    gap: 0.4rem;
-    padding: 0.5rem;
-    border-radius: 12px;
-    min-width: 70px;
+    gap: 0.2rem;
+    padding: 0.4rem 0.2rem;
+    border-radius: 10px;
+    min-width: 0;
+    flex: 1;
+    justify-content: center;
+    align-items: center;
   }
 
-  .nav-link span {
-    font-size: 0.75rem;
+  .mobile-links .nav-link span {
+    font-size: 0.6rem;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60px;
+    text-align: center;
   }
-  
-  .nav-link.active::before {
-    height: 4px;
-    width: 40%;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    border-radius: 0 0 4px 4px;
+
+  .mobile-links .nav-link .nav-icon {
+    width: 22px;
+    height: 22px;
   }
-  
-  .nav-link:hover {
-    transform: translateY(-2px);
+
+  .mobile-links .nav-link::before {
+    display: none;
+  }
+
+  .mobile-links .nav-link:hover {
+    transform: none;
+  }
+
+  .mobile-links .nav-link.active {
+    background: rgba(99, 102, 241, 0.15);
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Volume2, PlusCircle, CheckCircle, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
@@ -18,6 +18,27 @@ export default function WordsPage() {
   const [addedWords, setAddedWords] = useState(new Set());
   const { user, isPro, userData } = useAuth();
   const router = useRouter();
+  const [visibleCount, setVisibleCount] = useState(20);
+  const observerTarget = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + 20);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) observer.unobserve(observerTarget.current);
+    };
+  }, [observerTarget.current]);
 
   useEffect(() => {
     if (!user) return;
@@ -34,6 +55,7 @@ export default function WordsPage() {
   }, [user]);
 
   useEffect(() => {
+    setVisibleCount(20);
     fetchWords();
   }, [selectedLevel]);
 
@@ -42,7 +64,7 @@ export default function WordsPage() {
     try {
       // Check memory cache first
       if (window.wordCache && window.wordCache[selectedLevel]) {
-        setWords(window.wordCache[selectedLevel].slice(0, 50));
+        setWords(window.wordCache[selectedLevel]);
         setLoading(false);
         return;
       }
@@ -53,7 +75,7 @@ export default function WordsPage() {
         const parsed = JSON.parse(sessionData);
         if (!window.wordCache) window.wordCache = {};
         window.wordCache[selectedLevel] = parsed;
-        setWords(parsed.slice(0, 50));
+        setWords(parsed);
         setLoading(false);
         return;
       }
@@ -67,7 +89,7 @@ export default function WordsPage() {
         window.wordCache[selectedLevel] = data.words;
         sessionStorage.setItem(`words_${selectedLevel}`, JSON.stringify(data.words));
 
-        setWords(data.words.slice(0, 50)); // Fetching first 50 for demo to prevent massive arrays
+        setWords(data.words);
       } else {
         console.error('Failed to fetch words');
       }
@@ -153,7 +175,7 @@ export default function WordsPage() {
       </header>
 
       <div className="words-grid">
-        {words.map((word) => {
+        {words.slice(0, visibleCount).map((word) => {
           const isAdded = addedWords.has(word.eng);
           const isLockedLevel = !isPro && ['B1', 'B2', 'C1', 'C2'].includes(selectedLevel);
           
@@ -204,6 +226,9 @@ export default function WordsPage() {
           );
         })}
       </div>
+      {words.length > visibleCount && (
+        <div ref={observerTarget} style={{ height: '40px', width: '100%', marginTop: '20px' }}></div>
+      )}
     </div>
   );
 }

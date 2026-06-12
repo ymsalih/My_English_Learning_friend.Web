@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkoutFormInitialize } from '../../../../lib/iyzico-client';
+import { adminDb } from '../../../../lib/firebase-admin';
 
 export async function POST(req) {
   try {
@@ -80,6 +81,15 @@ export async function POST(req) {
     const result = await checkoutFormInitialize(apiKey, secretKey, request);
 
     if (result && result.status === 'success') {
+      // Token'ı Firebase'e kaydet — callback'te uid'yi buradan çekeceğiz
+      // Bu sayede conversationId'ye bağımlı olmayız
+      await adminDb.collection('pending_payments').doc(result.token).set({
+        uid: uid,
+        planType: planType,
+        email: email || '',
+        createdAt: new Date().toISOString(),
+      });
+
       return NextResponse.json({
         checkoutFormContent: result.checkoutFormContent,
         paymentPageUrl: result.paymentPageUrl,

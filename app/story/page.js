@@ -222,7 +222,7 @@ export default function StoryPage() {
       <div style={{display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap'}}>
         
         {/* Left Side: Word Selection */}
-        <div style={{flex: '1', minWidth: '300px'}}>
+        <div style={{flex: '1', minWidth: 'min(300px, 100%)'}}>
           <div style={{background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '15px', borderRadius: '12px', marginBottom: '20px', textAlign: 'center'}}>
             <h3 style={{color: 'var(--primary)', marginBottom: '5px'}}>Hikaye için kelime seçin</h3>
             <p style={{color: 'var(--text-muted)'}}>Kelimelere tıklayarak seçin.</p>
@@ -266,7 +266,7 @@ export default function StoryPage() {
 
         {/* Right Side: Generated Story */}
         {(storyText || generatingStory) && (
-          <div style={{flex: '1.5', minWidth: '300px'}} className="glass-panel">
+          <div style={{flex: '1.5', minWidth: 'min(300px, 100%)'}} className="glass-panel">
             <h2 style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'15px', color:'var(--foreground)'}}>
               <Sparkles color="var(--primary)"/> Yapay Zeka Hikayeniz
             </h2>

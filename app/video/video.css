@@ -151,3 +151,16 @@
   line-height: 1.6;
   font-size: 1.05rem;
 }
+
+@media (max-width: 768px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .video-player-section {
+    padding: 1.25rem;
+  }
+  .player-title {
+    font-size: 1.4rem;
+  }
+}

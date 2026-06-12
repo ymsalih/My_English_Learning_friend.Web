@@ -13,8 +13,8 @@ export async function POST(req) {
     const secretKey = process.env.IYZICO_SECRET_KEY;
 
     if (!token) {
-      console.error("Eksik token", { token });
-      return NextResponse.redirect(`${baseUrl}/pricing?error=missing_data`, 302);
+      console.error("Eksik token");
+      return NextResponse.redirect(`${baseUrl}/pricing?error=missing_token`, 302);
     }
 
     if (!apiKey || !secretKey) {
@@ -22,25 +22,29 @@ export async function POST(req) {
       return NextResponse.redirect(`${baseUrl}/pricing?error=config_error`, 302);
     }
 
-    // Token ile İyzico'dan ödemenin gerçekten başarılı olup olmadığını sorguluyoruz
+    // 1. Firebase'den bu token'a ait bekleyen ödeme bilgisini çek
+    const pendingDoc = await adminDb.collection('pending_payments').doc(token).get();
+    
+    if (!pendingDoc.exists) {
+      console.error("No pending payment found for token:", token);
+      return NextResponse.redirect(`${baseUrl}/pricing?error=invalid_token`, 302);
+    }
+
+    const pendingData = pendingDoc.data();
+    const uid = pendingData.uid;
+    const planType = pendingData.planType || 'monthly';
+
+    if (!uid) {
+      console.error("No UID in pending payment record");
+      return NextResponse.redirect(`${baseUrl}/pricing?error=missing_uid`, 302);
+    }
+
+    // 2. Token ile İyzico'dan ödemenin gerçekten başarılı olup olmadığını sorgula
     const result = await checkoutFormRetrieve(apiKey, secretKey, token);
 
     if (result.paymentStatus === 'SUCCESS') {
       // Ödeme Başarılı!
       try {
-        // conversationId'ye sakladığımız veriyi çözüyoruz (conv_uid_planType)
-        const conversationId = result.conversationId || '';
-        const parts = conversationId.split('_');
-        
-        // parts[0] = 'conv', parts[1] = uid, parts[2] = planType
-        const uid = parts[1];
-        const planType = parts[2] || 'monthly';
-
-        if (!uid) {
-          console.error("No UID found in conversationId!");
-          return NextResponse.redirect(`${baseUrl}/pricing?error=missing_uid`, 302);
-        }
-
         const now = new Date();
         const expiryDays = planType === 'yearly' ? 365 : 30;
         const expiryDate = new Date(now.getTime() + (expiryDays * 24 * 60 * 60 * 1000));
@@ -51,8 +55,11 @@ export async function POST(req) {
           paymentDate: now.toISOString(),
           expiryDate: expiryDate.toISOString(),
           iyzicoToken: token,
-          paymentId: result.paymentId
+          paymentId: result.paymentId || ''
         });
+        
+        // Bekleyen ödeme kaydını sil (temizlik)
+        await adminDb.collection('pending_payments').doc(token).delete();
         
         console.log(`User ${uid} successfully upgraded to PRO (${planType}) until ${expiryDate.toISOString()}`);
         // Başarılı sayfasına yönlendir
@@ -62,8 +69,10 @@ export async function POST(req) {
         return NextResponse.redirect(`${baseUrl}/pricing?error=database_error`, 302);
       }
     } else {
-      // Ödeme Reddedildi (Bakiye yetersiz, kart hatalı vs.)
+      // Ödeme Reddedildi
       console.error("Payment not successful:", result);
+      // Bekleyen ödeme kaydını sil
+      await adminDb.collection('pending_payments').doc(token).delete();
       return NextResponse.redirect(`${baseUrl}/pricing?error=${result.errorMessage || 'payment_declined'}`, 302);
     }
 

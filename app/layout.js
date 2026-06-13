@@ -36,7 +36,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="tr" suppressHydrationWarning className={outfit.variable}>
-      <body suppressHydrationWarning>
+      <body suppressHydrationWarning style={{ backgroundColor: '#09090b' }}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

@@ -152,7 +152,13 @@ export const AuthProvider = ({ children }) => {
     resetPassword
   }), [user, userData, isPro, loading, login, register, logout, resetPassword]);
 
-  if (loading) {
+  const publicPaths = ['/login', '/register', '/forgot-password', '/'];
+  const isRedirecting = !loading && (
+    (!user && !publicPaths.includes(pathname)) ||
+    (user && user.emailVerified && publicPaths.includes(pathname))
+  );
+
+  if (loading || isRedirecting) {
     return (
       <div style={{
         display: 'flex',

@@ -19,9 +19,37 @@ export default function MyPoolPage() {
   const [newTr, setNewTr] = useState('');
   const [adding, setAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const [visibleCount, setVisibleCount] = useState(20);
   const observerTarget = useRef(null);
+
+  useEffect(() => {
+    const text = newEng.trim();
+    if (text.length < 2) return;
+
+    const translateTimeout = setTimeout(async () => {
+      setIsTranslating(true);
+      try {
+        const PROXY_URL = "https://ceviri-api.vercel.app/api/proxy";
+        const res = await fetch(`${PROXY_URL}?service=deepl`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: [text], source_lang: 'EN', target_lang: 'TR' })
+        });
+        const data = await res.json();
+        if (data && data.translations && data.translations[0]) {
+          setNewTr(data.translations[0].text.toLowerCase());
+        }
+      } catch(e) {
+        console.error(e);
+      } finally {
+        setIsTranslating(false);
+      }
+    }, 700);
+
+    return () => clearTimeout(translateTimeout);
+  }, [newEng]);
 
   useEffect(() => {
     if (!user) return;
@@ -220,11 +248,12 @@ export default function MyPoolPage() {
             />
             <input 
               type="text" 
-              placeholder="Türkçe Anlamı" 
+              placeholder={isTranslating ? "Çevriliyor..." : "Türkçe Anlamı (Otomatik Çevrilir)"} 
               value={newTr}
               onChange={(e) => setNewTr(e.target.value)}
               required
               className="input-field"
+              style={{ opacity: isTranslating ? 0.6 : 1, transition: 'opacity 0.3s ease' }}
             />
             <button type="submit" className="btn btn-primary" disabled={adding}>
               {adding ? 'Ekleniyor...' : 'Ekle'}
@@ -266,7 +295,10 @@ export default function MyPoolPage() {
             </div>
           ))}
           {filteredWords.length >= visibleCount && (
-            <div ref={observerTarget} style={{ height: '20px', width: '100%' }}></div>
+            <div ref={observerTarget} style={{ height: '40px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '1rem' }}>
+              <div className="spinner" style={{width: '24px', height: '24px'}}></div>
+              <span style={{marginLeft: '10px', color: 'var(--text-muted)', fontSize: '0.9rem'}}>Daha fazla yükleniyor...</span>
+            </div>
           )}
         </div>
       )}

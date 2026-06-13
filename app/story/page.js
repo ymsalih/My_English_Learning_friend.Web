@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, orderBy, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, Volume2, Sparkles, Languages } from 'lucide-react';
 import { speakWord, stopSpeech } from '../../lib/tts';
@@ -25,33 +25,78 @@ export default function StoryPage() {
   const [translating, setTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
 
+  const [visibleCount, setVisibleCount] = useState(20);
+  const observerTarget = useRef(null);
+
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
+    const qWithIndex = query(
       collection(db, 'users', user.uid, 'words'),
-      where('isLearned', '==', false)
+      where('isLearned', '==', false),
+      orderBy('timestamp', 'desc'),
+      limit(visibleCount)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    let unsubscribeFallback = null;
+
+    const unsubscribe = onSnapshot(qWithIndex, (snapshot) => {
       const wordsData = [];
       snapshot.forEach((doc) => {
         const data = doc.data({ serverTimestamps: 'estimate' });
         wordsData.push({ id: doc.id, ...data });
       });
-      
-      wordsData.sort((a, b) => {
-        const timeA = a.timestamp?.seconds || 0;
-        const timeB = b.timestamp?.seconds || 0;
-        return timeB - timeA;
-      });
-
       setWords(wordsData);
       setLoading(false);
+    }, (error) => {
+      console.warn("Firestore index error, falling back to local sorting:", error);
+      const qFallback = query(
+        collection(db, 'users', user.uid, 'words'),
+        where('isLearned', '==', false)
+      );
+      
+      unsubscribeFallback = onSnapshot(qFallback, (snapshot) => {
+        const wordsData = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data({ serverTimestamps: 'estimate' });
+          wordsData.push({ id: doc.id, ...data });
+        });
+        
+        wordsData.sort((a, b) => {
+          const timeA = a.timestamp?.seconds || 0;
+          const timeB = b.timestamp?.seconds || 0;
+          return timeB - timeA;
+        });
+
+        setWords(wordsData.slice(0, visibleCount));
+        setLoading(false);
+      });
     });
 
-    return () => unsubscribe();
-  }, [user]);
+    return () => {
+      unsubscribe();
+      if (unsubscribeFallback) unsubscribeFallback();
+    };
+  }, [user, visibleCount]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount(prev => prev + 20);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) observer.unobserve(observerTarget.current);
+    };
+  }, [observerTarget.current]);
 
   // Clean up speech when leaving the page
   useEffect(() => {
@@ -260,6 +305,12 @@ export default function StoryPage() {
                   )}
                 </div>
               ))}
+              {words.length >= visibleCount && (
+                <div ref={observerTarget} style={{ height: '40px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '1rem' }}>
+                  <div className="spinner" style={{width: '24px', height: '24px'}}></div>
+                  <span style={{marginLeft: '10px', color: 'var(--text-muted)', fontSize: '0.9rem'}}>Daha fazla yükleniyor...</span>
+                </div>
+              )}
             </div>
           )}
         </div>

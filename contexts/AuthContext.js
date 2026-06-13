@@ -152,9 +152,74 @@ export const AuthProvider = ({ children }) => {
     resetPassword
   }), [user, userData, isPro, loading, login, register, logout, resetPassword]);
 
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: 'var(--background)',
+        gap: '1.5rem'
+      }}>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '16px',
+          background: 'var(--primary-gradient)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '1.5rem',
+          fontWeight: '900',
+          color: 'white',
+          animation: 'pulse 1.5s ease-in-out infinite'
+        }}>
+          O
+        </div>
+        
+        <h1 style={{
+          fontSize: '1.8rem',
+          fontWeight: '800',
+          background: 'var(--primary-gradient)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          margin: '0 0 -0.5rem 0',
+          letterSpacing: '-0.5px',
+          animation: 'pulse 1.5s ease-in-out infinite'
+        }}>
+          Owlish
+        </h1>
+
+        <div style={{
+          width: '120px',
+          height: '4px',
+          borderRadius: '4px',
+          background: 'var(--glass-border)',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          <div style={{
+            position: 'absolute',
+            height: '100%',
+            width: '40%',
+            borderRadius: '4px',
+            background: 'var(--primary-gradient)',
+            animation: 'loadingBar 1s ease-in-out infinite'
+          }} />
+        </div>
+        <style>{`
+          @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } }
+          @keyframes loadingBar { 0% { left: -40%; } 100% { left: 100%; } }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={contextValue}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

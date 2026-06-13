@@ -77,8 +77,8 @@ export default function ProfilePage() {
   // Calculate Success Rate
   let successRate = 0;
   if (stats.totalAnswered > 0) {
-    successRate = ((stats.totalCorrect + stats.totalMastered - stats.totalWrong) / stats.totalAnswered) * 100;
-    if (successRate < 0) successRate = 0;
+    // Yeni Formül: (Doğru + Usta) / Toplam Cevap
+    successRate = ((stats.totalCorrect + stats.totalMastered) / stats.totalAnswered) * 100;
     successRate = Math.round(successRate);
   }
 

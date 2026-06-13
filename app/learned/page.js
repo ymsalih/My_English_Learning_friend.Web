@@ -179,7 +179,10 @@ export default function LearnedWordsPage() {
             </div>
           ))}
           {filteredWords.length >= visibleCount && (
-            <div ref={observerTarget} style={{ height: '20px', width: '100%' }}></div>
+            <div ref={observerTarget} style={{ height: '40px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '1rem' }}>
+              <div className="spinner" style={{width: '24px', height: '24px'}}></div>
+              <span style={{marginLeft: '10px', color: 'var(--text-muted)', fontSize: '0.9rem'}}>Daha fazla yükleniyor...</span>
+            </div>
           )}
         </div>
       )}

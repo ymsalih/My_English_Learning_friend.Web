@@ -54,51 +54,52 @@ export default function WordsPage() {
     return () => unsubscribe();
   }, [user]);
 
-  useEffect(() => {
-    setVisibleCount(20);
-    fetchWords();
-  }, [selectedLevel]);
-
-  const fetchWords = async () => {
+  const fetchWords = async (levelToFetch) => {
     setLoading(true);
     try {
-      // Check memory cache first
-      if (window.wordCache && window.wordCache[selectedLevel]) {
-        setWords(window.wordCache[selectedLevel]);
+      if (window.wordCache && window.wordCache[levelToFetch]) {
+        if (selectedLevel === levelToFetch) setWords(window.wordCache[levelToFetch]);
         setLoading(false);
         return;
       }
 
-      // Check session storage
-      const sessionData = sessionStorage.getItem(`words_${selectedLevel}`);
+      const sessionData = sessionStorage.getItem(`words_${levelToFetch}`);
       if (sessionData) {
         const parsed = JSON.parse(sessionData);
         if (!window.wordCache) window.wordCache = {};
-        window.wordCache[selectedLevel] = parsed;
-        setWords(parsed);
+        window.wordCache[levelToFetch] = parsed;
+        if (selectedLevel === levelToFetch) setWords(parsed);
         setLoading(false);
         return;
       }
 
-      const response = await fetch(`https://raw.githubusercontent.com/ymsalih/english-words-api/main/${selectedLevel}.json`);
+      const response = await fetch(`https://raw.githubusercontent.com/ymsalih/english-words-api/main/${levelToFetch}.json`);
       if (response.ok) {
         const data = await response.json();
+        const fetchedWords = data.words || [];
         
-        // Save to cache
         if (!window.wordCache) window.wordCache = {};
-        window.wordCache[selectedLevel] = data.words;
-        sessionStorage.setItem(`words_${selectedLevel}`, JSON.stringify(data.words));
+        window.wordCache[levelToFetch] = fetchedWords;
+        sessionStorage.setItem(`words_${levelToFetch}`, JSON.stringify(fetchedWords));
 
-        setWords(data.words);
+        if (selectedLevel === levelToFetch) setWords(fetchedWords);
       } else {
-        console.error('Failed to fetch words');
+        console.error(`Failed to fetch words for ${levelToFetch}`);
+        if (selectedLevel === levelToFetch) setWords([]);
       }
     } catch (error) {
       console.error('Error fetching words:', error);
+      if (selectedLevel === levelToFetch) setWords([]);
     } finally {
-      setLoading(false);
+      if (selectedLevel === levelToFetch) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setVisibleCount(20);
+    setWords([]); // Clear words immediately when level changes
+    fetchWords(selectedLevel);
+  }, [selectedLevel]);
 
 
 
@@ -175,12 +176,12 @@ export default function WordsPage() {
       </header>
 
       <div className="words-grid">
-        {words.slice(0, visibleCount).map((word) => {
+        {words.slice(0, visibleCount).map((word, index) => {
           const isAdded = addedWords.has(word.eng);
           const isLockedLevel = !isPro && ['B1', 'B2', 'C1', 'C2'].includes(selectedLevel);
           
           return (
-            <div key={word.eng} className="package-word-card glass-panel" style={isLockedLevel ? { opacity: 0.5 } : {}}>
+            <div key={`${word.eng}-${index}`} className="package-word-card glass-panel" style={isLockedLevel ? { opacity: 0.5 } : {}}>
               <div className="level-badge-container">
                 <div className="level-badge">
                   {selectedLevel}
@@ -227,7 +228,10 @@ export default function WordsPage() {
         })}
       </div>
       {words.length > visibleCount && (
-        <div ref={observerTarget} style={{ height: '40px', width: '100%', marginTop: '20px' }}></div>
+        <div ref={observerTarget} style={{ height: '40px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '1rem' }}>
+          <div className="spinner" style={{width: '24px', height: '24px'}}></div>
+          <span style={{marginLeft: '10px', color: 'var(--text-muted)', fontSize: '0.9rem'}}>Daha fazla yükleniyor...</span>
+        </div>
       )}
     </div>
   );

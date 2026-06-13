@@ -121,7 +121,24 @@ export default function AiChatPage() {
         throw new Error(data.error || 'API Hatası');
       }
 
-      setMessages(prev => [...prev, { role: 'ai', text: data.reply }]);
+      let finalReply = data.reply;
+      let correction = null;
+
+      try {
+        const cleanJsonStr = data.reply.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanJsonStr);
+        if (parsed.reply) {
+          finalReply = parsed.reply;
+        }
+        if (parsed.correction && parsed.correction.hasError) {
+          correction = parsed.correction;
+        }
+      } catch (e) {
+        // Fallback if not valid JSON
+        console.warn("JSON parse error from AI, using raw text", e);
+      }
+
+      setMessages(prev => [...prev, { role: 'ai', text: finalReply, correction }]);
     } catch (error) {
       console.error('Mesaj gönderme hatası:', error);
       alert('Mesaj gönderilemedi: ' + error.message);
@@ -219,7 +236,34 @@ export default function AiChatPage() {
           )}
 
           {messages.map((msg, index) => (
-            <div key={index} className={`message-wrapper ${msg.role}`}>
+            <div key={index} className={`message-wrapper ${msg.role}`} style={{ flexDirection: 'column', gap: '8px' }}>
+              
+              {/* Grammar Coach Bubble (Only for AI messages with corrections) */}
+              {msg.correction && msg.role === 'ai' && (
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.05)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  fontSize: '0.9rem',
+                  maxWidth: '100%',
+                  alignSelf: 'flex-start'
+                }}>
+                  <div style={{fontWeight: 'bold', color: '#ef4444', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px'}}>
+                    <Info size={14} /> Grammar Coach
+                  </div>
+                  <div style={{textDecoration: 'line-through', color: 'var(--text-muted)', marginBottom: '2px'}}>
+                    "{msg.correction.original}"
+                  </div>
+                  <div style={{color: '#10b981', fontWeight: '500', marginBottom: '6px'}}>
+                    "{msg.correction.corrected}"
+                  </div>
+                  <div style={{fontSize: '0.85rem', color: 'var(--foreground)', opacity: 0.9}}>
+                    💡 {msg.correction.explanation}
+                  </div>
+                </div>
+              )}
+
               <div className="message-bubble">
                 <div style={{fontWeight: 'bold', fontSize: '0.8rem', opacity: 0.7, marginBottom: '4px'}}>
                   {msg.role === 'user' ? 'Siz' : 'AI Asistan'}

@@ -53,6 +53,7 @@ export default function NewsPage() {
               target="_blank" 
               rel="noopener noreferrer" 
               className="news-card glass-panel"
+              style={item.color ? { borderLeftColor: item.color } : {}}
             >
               {item.image && (
                 <Image 
@@ -65,7 +66,8 @@ export default function NewsPage() {
               )}
               <div className="news-content">
                 <h3 className="news-title">{item.title || 'Başlıksız Haber'}</h3>
-                <div className="read-more">
+                {item.subtitle && <p className="news-subtitle">{item.subtitle}</p>}
+                <div className="read-more" style={item.color ? { color: item.color } : {}}>
                   <span>Haberi Oku</span>
                   <ExternalLink size={16} />
                 </div>

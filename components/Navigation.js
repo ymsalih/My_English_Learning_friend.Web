@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
-import { LogOut, Home, BookOpen, Layers, Target, Newspaper, Video, Languages, Award, User, Crown, Bot, Sparkles, Menu, X } from 'lucide-react';
+import { LogOut, Home, BookOpen, Layers, Target, Newspaper, Video, Languages, Award, User, Crown, Bot, Sparkles, Menu, X, Headphones } from 'lucide-react';
 import './Navigation.css';
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { name: 'Öğrendiklerim', path: '/learned', icon: Award },
   { name: 'Kelime Paketleri', path: '/words', icon: BookOpen },
   { name: 'Yapay Zeka Sohbet', path: '/ai-chat', icon: Bot, mobileBar: true },
+  { name: 'Dinleme Sınavı', path: '/listening', icon: Headphones, mobileBar: true },
   { name: 'Yapay Zeka Hikaye', path: '/story', icon: Sparkles },
   { name: 'Video Pratik', path: '/video', icon: Video },
   { name: 'Haberler', path: '/news', icon: Newspaper },

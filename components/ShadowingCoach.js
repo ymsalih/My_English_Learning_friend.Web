@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Mic, MicOff, RefreshCw, CheckCircle, Volume2 } from 'lucide-react';
+import { Mic, MicOff, RefreshCw, CheckCircle, Volume2, Info } from 'lucide-react';
 import { speakWord } from '../lib/tts';
 
 // Levenshtein distance string similarity
@@ -55,6 +55,37 @@ const defaultSentences = [
   "I am learning English every day."
 ];
 
+// Word by word evaluation helper
+function evaluateWords(targetStr, spokenStr) {
+  if (!spokenStr) return [];
+  
+  const cleanTargetWords = targetStr.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w);
+  const spokenWords = spokenStr.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w);
+  const originalTargetWords = targetStr.split(/\s+/).filter(w => w);
+  
+  let spokenIndex = 0;
+  return originalTargetWords.map((originalWord, index) => {
+    const cleanTarget = cleanTargetWords[index];
+    let isCorrect = false;
+    
+    // Look ahead to handle skipped/added words in speech
+    const maxLookahead = Math.min(spokenWords.length, spokenIndex + 4);
+    for (let i = Math.max(0, spokenIndex - 1); i < maxLookahead; i++) {
+      if (similarity(cleanTarget, spokenWords[i]) >= 0.75) {
+        isCorrect = true;
+        spokenIndex = i + 1;
+        break;
+      }
+    }
+    
+    return {
+      text: originalWord,
+      cleanText: cleanTarget,
+      isCorrect: isCorrect
+    };
+  });
+}
+
 export default function ShadowingCoach() {
   const { user, isPro, userData } = useAuth();
   const router = useRouter();
@@ -66,16 +97,16 @@ export default function ShadowingCoach() {
   const [transcript, setTranscript] = useState('');
   const [score, setScore] = useState(null);
   const [feedback, setFeedback] = useState('');
+  const [evaluatedWords, setEvaluatedWords] = useState([]);
   
   const recognitionRef = useRef(null);
 
   useEffect(() => {
-    // Initialize Web Speech API
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.continuous = true; // Don't stop immediately on pause
+      recognition.interimResults = true; // Live feedback
       recognition.lang = 'en-US';
 
       recognition.onstart = () => {
@@ -83,23 +114,48 @@ export default function ShadowingCoach() {
         setTranscript('');
         setScore(null);
         setFeedback('');
+        setEvaluatedWords([]);
       };
 
       recognition.onresult = (event) => {
-        const current = event.resultIndex;
-        const resultText = event.results[current][0].transcript;
-        setTranscript(resultText);
-        calculateScore(resultText);
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        
+        const currentText = finalTranscript || interimTranscript || event.results[event.resultIndex][0].transcript;
+        setTranscript(currentText);
+        
+        // Live evaluation
+        const evaluated = evaluateWords(targetSentence, currentText);
+        setEvaluatedWords(evaluated);
+        
+        if (evaluated.length > 0) {
+           const correctCount = evaluated.filter(w => w.isCorrect).length;
+           const pct = Math.round((correctCount / evaluated.length) * 100);
+           setScore(pct);
+           if (pct >= 90) setFeedback('Harika! Anadilin gibi konuştun. 🌟');
+           else if (pct >= 70) setFeedback('Çok iyi! Küçük pürüzler var ama gayet anlaşılır. 👍');
+           else if (pct >= 50) setFeedback('Fena değil! Kırmızı kelimelere tıklayıp dinle ve tekrar et. 🔄');
+           else setFeedback('Kırmızı kelimelere tıklayarak doğrusunu dinle ve tekrar dene! 🎧');
+        }
       };
 
       recognition.onerror = (event) => {
-        // console.warn ile yazdırıyoruz ki Next.js bunu büyük bir kırmız ekran (crash) gibi algılamasın.
         console.warn("Speech recognition info:", event.error);
-        setIsListening(false);
+        if (event.error !== 'no-speech') {
+          setIsListening(false);
+        }
         if (event.error === 'not-allowed') {
-          setFeedback('Mikrofon izni reddedildi. Lütfen tarayıcı ayarlarından mikrofona izin verin.');
+          setFeedback('Mikrofon izni reddedildi. Lütfen ayarlardan izin verin.');
         } else if (event.error === 'no-speech') {
-          setFeedback('Ses algılanamadı. Lütfen mikrofona daha yakın konuşun.');
+          // ignore, user is just pausing
         } else {
           setFeedback(`Bir sorun oluştu: ${event.error}`);
         }
@@ -111,7 +167,7 @@ export default function ShadowingCoach() {
 
       recognitionRef.current = recognition;
     }
-  }, [targetSentence]); // Re-initialize if needed
+  }, [targetSentence]);
 
   const checkLimitsAndStart = async () => {
     if (!user) return;
@@ -121,7 +177,6 @@ export default function ShadowingCoach() {
       return;
     }
 
-    // Limit check for free users
     if (!isPro && userData) {
       const today = new Date().toISOString().split('T')[0];
       const lastDate = userData.lastShadowingDate || '';
@@ -131,13 +186,12 @@ export default function ShadowingCoach() {
         currentCount = 0;
       }
       
-      if (currentCount >= 3) {
-        alert("Ücretsiz planda günde sadece 3 kez telaffuz testi yapabilirsiniz. Sınırsız pratik için Pro'ya geçin!");
+      if (currentCount >= 5) {
+        alert("Ücretsiz planda günde sadece 5 kez telaffuz testi yapabilirsiniz. Sınırsız pratik için Pro'ya geçin!");
         router.push('/pricing');
         return;
       }
       
-      // Update count
       try {
         await updateDoc(doc(db, 'users', user.uid), {
           dailyShadowingCount: currentCount + 1,
@@ -155,22 +209,6 @@ export default function ShadowingCoach() {
     }
   };
 
-  const calculateScore = (spokenText) => {
-    const sim = similarity(targetSentence, spokenText);
-    const percentage = Math.round(sim * 100);
-    setScore(percentage);
-    
-    if (percentage >= 90) {
-      setFeedback('Harika! Anadilin gibi konuştun. 🌟');
-    } else if (percentage >= 70) {
-      setFeedback('Çok iyi! Küçük pürüzler var ama gayet anlaşılır. 👍');
-    } else if (percentage >= 50) {
-      setFeedback('Fena değil! Biraz daha pratik yapmalısın. 🔄');
-    } else {
-      setFeedback('Anlaşılması güç oldu. Sesi dinleyip tekrar etmeyi dene! 🎧');
-    }
-  };
-
   const handleCustomSentenceAdd = (e) => {
     e.preventDefault();
     if (customSentence.trim()) {
@@ -179,6 +217,7 @@ export default function ShadowingCoach() {
       setScore(null);
       setTranscript('');
       setFeedback('');
+      setEvaluatedWords([]);
     }
   };
 
@@ -190,7 +229,7 @@ export default function ShadowingCoach() {
       </div>
       
       <p style={{color: 'var(--text-muted)', marginBottom: '20px'}}>
-        Videoda duyduğun bir cümleyi veya kendi cümleni buraya yaz, mikrofona oku ve telaffuzunu anında puanlayalım!
+        Videoda duyduğun bir cümleyi veya kendi cümleni buraya yaz, mikrofona oku ve telaffuzunu kelime kelime puanlayalım!
       </p>
 
       <div style={{display: 'flex', gap: '10px', marginBottom: '25px', flexWrap: 'wrap'}}>
@@ -203,6 +242,7 @@ export default function ShadowingCoach() {
               setTargetSentence(e.target.value);
               setScore(null);
               setTranscript('');
+              setEvaluatedWords([]);
             }
           }}
         >
@@ -232,15 +272,51 @@ export default function ShadowingCoach() {
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px'}}>
           
           <div style={{flex: 1, minWidth: '250px'}}>
-            <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px'}}>Hedef Cümle:</p>
-            <h3 style={{fontSize: '1.4rem', color: 'var(--primary)', marginBottom: '15px'}}>{targetSentence}</h3>
+            <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
+               <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0}}>Hedef Cümle:</p>
+               {evaluatedWords.length > 0 && (
+                 <span style={{fontSize: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '2px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px'}}>
+                   <Info size={12}/> Yanlışlara tıklayıp dinle
+                 </span>
+               )}
+            </div>
+            
+            <h3 style={{fontSize: '1.4rem', marginBottom: '15px', lineHeight: '1.6'}}>
+              {evaluatedWords.length > 0 ? (
+                evaluatedWords.map((word, i) => (
+                  <span 
+                    key={i} 
+                    onClick={() => speakWord(word.cleanText)}
+                    style={{
+                      color: word.isCorrect ? '#10b981' : '#ef4444',
+                      cursor: 'pointer',
+                      padding: '2px 6px',
+                      borderRadius: '6px',
+                      background: word.isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      marginRight: '6px',
+                      display: 'inline-block',
+                      borderBottom: word.isCorrect ? '2px solid #10b981' : '2px solid #ef4444',
+                      transition: 'all 0.2s ease',
+                      position: 'relative'
+                    }}
+                    title="Okunuşunu dinlemek için tıkla"
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                  >
+                    {word.text}
+                  </span>
+                ))
+              ) : (
+                <span style={{color: 'var(--primary)'}}>{targetSentence}</span>
+              )}
+            </h3>
             
             <button 
               className="btn btn-secondary" 
               onClick={() => speakWord(targetSentence)}
               style={{display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.85rem'}}
             >
-              <Volume2 size={16} /> Doğrusunu Dinle
+              <Volume2 size={16} /> Tümünü Dinle
             </button>
           </div>
 
@@ -266,7 +342,7 @@ export default function ShadowingCoach() {
               {isListening ? <MicOff size={32} /> : <Mic size={32} />}
             </button>
             <p style={{marginTop: '15px', color: isListening ? '#ef4444' : 'var(--text-muted)', fontWeight: isListening ? 'bold' : 'normal'}}>
-              {isListening ? 'Sizi Dinliyorum...' : 'Konuşmak için tıkla'}
+              {isListening ? 'Sizi Dinliyorum... (Durdurmak için tıkla)' : 'Konuşmak için tıkla'}
             </p>
           </div>
           
@@ -274,8 +350,10 @@ export default function ShadowingCoach() {
 
         {(transcript || score !== null) && (
           <div style={{marginTop: '30px', paddingTop: '20px', borderTop: '1px dashed rgba(255,255,255,0.1)'}}>
-            <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px'}}>Senin Söylediğin:</p>
-            <p style={{fontSize: '1.2rem', color: 'var(--foreground)', marginBottom: '15px', fontStyle: 'italic'}}>"{transcript || '...'}"</p>
+            <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px'}}>Senin Söylediğin (Canlı):</p>
+            <p style={{fontSize: '1.2rem', color: 'var(--foreground)', marginBottom: '15px', fontStyle: 'italic', minHeight: '30px'}}>
+              {transcript ? `"${transcript}"` : <span style={{opacity: 0.5}}>...</span>}
+            </p>
             
             {score !== null && (
               <div style={{display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '10px'}}>
@@ -289,7 +367,8 @@ export default function ShadowingCoach() {
                   justifyContent: 'center',
                   fontSize: '1.2rem',
                   fontWeight: 'bold',
-                  color: 'white'
+                  color: 'white',
+                  flexShrink: 0
                 }}>
                   %{score}
                 </div>

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Video, Camera, PenTool, Layers, Award, TrendingUp, Target, Crown, Sparkles } from 'lucide-react';
+import { BookOpen, Video, Camera, PenTool, Layers, Award, TrendingUp, Target, Crown, Sparkles, Headphones } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, doc, onSnapshot, getCountFromServer } from 'firebase/firestore';
+import { collection, doc, onSnapshot, getCountFromServer, query, where } from 'firebase/firestore';
 import './dashboard.css';
 
 const modules = [
@@ -13,6 +13,7 @@ const modules = [
   { id: 'my-pool', title: 'Kelime Havuzum', desc: 'Akıllı algoritmalarla kişiselleştirilmiş öğrenme sürecinizi yönetin.', icon: Layers, color: '#14b8a6', path: '/my-pool' },
   { id: 'learned', title: 'Öğrendiklerim', desc: 'Başarıyla tamamladığınız kelime arşivi ve ilerleme raporunuz.', icon: Award, color: '#10b981', path: '/learned' },
   { id: 'translation', title: 'Akıllı Çeviri & OCR', desc: 'Yapay zeka destekli metin ve görsel (kamera) çeviri asistanınız.', icon: PenTool, color: '#ec4899', path: '/translation' },
+  { id: 'listening', title: 'Ne Duyduğunu Yaz', desc: 'Dinleme becerinizi ölçün, duyduğunuzu yazarak test edin.', icon: Headphones, color: '#8b5cf6', path: '/listening', badge: 'PREMİUM' },
   { id: 'test', title: 'Kendini Test Et', desc: 'Öğrendiğiniz kelimelerle kendinizi test edin ve gelişiminizi ölçün.', icon: Target, color: '#f59e0b', path: '/test' },
   { id: 'ai-chat', title: 'Yapay Zeka Sohbet', desc: 'İngilizce mülakat koçu, gramer öğretmeni ve sohbet arkadaşınız.', icon: Sparkles, color: '#3b82f6', path: '/ai-chat', badge: 'YAPAY ZEKA' },
   { id: 'story', title: 'Yapay Zeka Hikaye', desc: 'Kelime havuzunuzdaki sözcüklerden size özel hikayeler yaratın.', icon: Sparkles, color: '#f43f5e', path: '/story', badge: 'YENİ' },
@@ -31,7 +32,8 @@ export default function Dashboard() {
     const fetchWordCount = async () => {
       try {
         const coll = collection(db, 'users', user.uid, 'words');
-        const snapshot = await getCountFromServer(coll);
+        const q = query(coll, where('isLearned', '==', false));
+        const snapshot = await getCountFromServer(q);
         setTotalWords(snapshot.data().count);
       } catch (err) {
         console.error("Kelime sayisi alinirken hata:", err);
@@ -47,9 +49,8 @@ export default function Dashboard() {
           const totalAnswered = totalCorrect + totalWrong + totalMastered;
           
           if (totalAnswered > 0) {
-            // Başarı Oranı Formülü: ((Doğru + Usta - Yanlış) / Toplam) * 100
-            let rate = ((totalCorrect + totalMastered - totalWrong) / totalAnswered) * 100;
-            if (rate < 0) rate = 0;
+            // Başarı Oranı Formülü: (Doğru + Usta) / Toplam
+            let rate = ((totalCorrect + totalMastered) / totalAnswered) * 100;
             setSuccessRate(Math.round(rate));
           } else {
             setSuccessRate(0);
@@ -86,6 +87,10 @@ export default function Dashboard() {
                 <div style={{background: 'var(--background)', padding: '1rem', borderRadius: '12px'}}>
                   <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>Günlük Çeviri (Kamera)</p>
                   <div style={{fontWeight: 'bold', color: (userData.dailyOcrCount || 0) >= 3 ? '#ef4444' : 'var(--foreground)'}}>{userData.dailyOcrCount || 0} / 3 Okutma</div>
+                </div>
+                <div style={{background: 'var(--background)', padding: '1rem', borderRadius: '12px'}}>
+                  <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>Günlük Dinleme Sınavı</p>
+                  <div style={{fontWeight: 'bold', color: (userData.dailyListeningCount || 0) >= 3 ? '#ef4444' : 'var(--foreground)'}}>{userData.dailyListeningCount || 0} / 3 Test</div>
                 </div>
               </div>
               <Link href="/pricing" className="action-btn primary" style={{marginTop: '1.5rem', display: 'inline-block', textAlign: 'center', textDecoration: 'none', padding: '0.8rem 1.5rem', fontSize: '0.95rem', width: 'auto'}}>Limitleri Kaldır - Premium'a Geç</Link>

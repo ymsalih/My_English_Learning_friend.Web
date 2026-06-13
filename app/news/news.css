@@ -53,9 +53,18 @@
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--foreground);
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   line-height: 1.4;
   letter-spacing: -0.3px;
+  position: relative;
+  z-index: 1;
+}
+
+.news-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.5;
   position: relative;
   z-index: 1;
 }
